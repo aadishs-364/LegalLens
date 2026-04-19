@@ -9,7 +9,7 @@ import { SAMPLE_CLAUSE } from "./lib/sample-clause";
 import { ResultsDashboard } from "@/components/LegalLens/ResultsDashboard";
 import { identifyContractRisks, type IdentifyContractRisksOutput } from "@/ai/flows/identify-contract-risks";
 import { toast } from "@/hooks/use-toast";
-import { cn, retryWithBackoff } from "@/lib/utils";
+import { cn } from "@/lib/utils";
 
 interface HistoryItem {
   fullText: string;
@@ -51,7 +51,8 @@ export default function LegalLensPage() {
 
     setIsAnalyzing(true);
     try {
-      const data = await retryWithBackoff(() => identifyContractRisks({ contractClause: inputText }));
+      // Direct call - internal rotation handled by the server action
+      const data = await identifyContractRisks({ contractClause: inputText });
       
       if (!data.isValidClause) {
         toast({
@@ -81,14 +82,14 @@ export default function LegalLensPage() {
         toast({
           variant: "destructive",
           title: "AI Capacity Reached",
-          description: "All available API keys are currently at their limit. Please wait 30 seconds.",
+          description: "All 5 API keys are currently busy. Please wait 15 seconds.",
         });
       } else {
         console.error("Analysis Error:", error);
         toast({
           variant: "destructive",
           title: "Analysis Failed",
-          description: "An error occurred while communicating with the AI. Please try again.",
+          description: "An error occurred while communicating with the AI. Please check your API keys.",
         });
       }
     } finally {
@@ -290,7 +291,7 @@ export default function LegalLensPage() {
                 </div>
                 <div className="text-center">
                   <h3 className="text-xl font-bold text-foreground">Extracting Legal Insights</h3>
-                  <p className="text-muted-foreground mt-2">Our AI is parsing the legalese. Almost there...</p>
+                  <p className="text-muted-foreground mt-2">Rotating across 5 API keys for maximum speed...</p>
                 </div>
               </div>
             ) : results ? (

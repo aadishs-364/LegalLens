@@ -16,8 +16,8 @@ export function cn(...inputs: ClassValue[]) {
  */
 export async function retryWithBackoff<T>(
   fn: (instanceIndex: number) => Promise<T>,
-  maxRetries: number = 5,
-  initialDelay: number = 1000,
+  maxRetries: number = 8,
+  initialDelay: number = 500,
   availableInstancesCount: number = 1
 ): Promise<T> {
   let retries = 0;
@@ -40,23 +40,23 @@ export async function retryWithBackoff<T>(
         errorMessage.includes('LIMIT');
 
       if (isRateLimit && retries < maxRetries) {
-        // FAST ROTATION: If we have other keys, switch immediately with almost no delay
+        // FAST ROTATION: If we have other keys, switch immediately
         if (availableInstancesCount > 1) {
           const previousIndex = currentInstanceIndex;
           currentInstanceIndex = (currentInstanceIndex + 1) % availableInstancesCount;
           
           if (typeof window === 'undefined') {
-            console.log(`[Fast-Rotate] Switching from Key #${previousIndex + 1} to Key #${currentInstanceIndex + 1} instantly.`);
+            console.log(`[Fast-Rotate] Switching from Key #${previousIndex + 1} to Key #${currentInstanceIndex + 1} due to rate limit.`);
           }
           
           // Tiny jitter to avoid simultaneous hits
-          await new Promise(resolve => setTimeout(resolve, 200));
+          await new Promise(resolve => setTimeout(resolve, 150));
           retries++;
           continue;
         }
         
         // SLOW BACKOFF: Only used if we have only one key
-        const delay = initialDelay * Math.pow(2, retries) + Math.random() * 500;
+        const delay = initialDelay * Math.pow(2, retries) + Math.random() * 300;
         
         if (typeof window === 'undefined') {
           console.warn(`[Retry] Rate limit hit. Waiting ${Math.round(delay)}ms before retry ${retries + 1}.`);

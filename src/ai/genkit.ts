@@ -33,16 +33,16 @@ if (typeof window === 'undefined') {
 
 /**
  * Initialize a pool of Genkit instances, one for each API key.
- * If no keys are provided, it falls back to the default environment discovery.
+ * Using gemini-1.5-flash (stable and fast).
  */
 export const allAis = keys.length > 0 
   ? keys.map(key => genkit({
       plugins: [googleAI({ apiKey: key })],
-      model: 'googleai/gemini-2.5-flash',
+      model: 'googleai/gemini-1.5-flash',
     }))
   : [genkit({
       plugins: [googleAI()],
-      model: 'googleai/gemini-2.5-flash',
+      model: 'googleai/gemini-1.5-flash',
     })];
 
 /**
