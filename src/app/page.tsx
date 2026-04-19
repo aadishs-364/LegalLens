@@ -287,7 +287,7 @@ export default function LegalLensPage() {
                 </div>
                 <div className="text-center">
                   <h3 className="text-xl font-bold text-foreground">Extracting Legal Insights</h3>
-                  <p className="text-muted-foreground mt-2">Analyzing your LegalEase...</p>
+                  <p className="text-muted-foreground mt-2">Analysing your Legalase...</p>
                 </div>
               </div>
             ) : results ? (

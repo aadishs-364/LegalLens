@@ -48,11 +48,12 @@ export const ai = allAis[0];
 
 /**
  * Helper to define a prompt across all available AI instances for fallback support.
+ * Uses the stable gemini-1.5-flash model to ensure v1 API compatibility.
  */
 export function defineMultiPrompt<I extends z.ZodTypeAny, O extends z.ZodTypeAny>(options: any) {
   return allAis.map(instance => instance.definePrompt({
     ...options,
-    // Using a more resilient model identifier to avoid 404s
+    // Using the stable identifier to force v1 API usage and avoid 404 v1beta errors
     model: 'googleai/gemini-1.5-flash',
   }));
 }
