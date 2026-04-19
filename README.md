@@ -1,5 +1,2 @@
-# Firebase Studio
-
-This is a NextJS starter in Firebase Studio.
-
-To get started, take a look at src/app/page.tsx.
+## TEAM LegalLens
+# We're here to help you find assistance through the overly complicated legal processes
