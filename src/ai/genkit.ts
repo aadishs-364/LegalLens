@@ -11,6 +11,14 @@ const keys = [
   process.env.GOOGLE_GENAI_API_KEY_3,
 ].filter(Boolean) as string[];
 
+// Diagnostic log (visible in server terminal)
+if (typeof window === 'undefined') {
+  console.log(`[Genkit Init] Detected ${keys.length} API key(s) for rotation.`);
+  if (keys.length === 0) {
+    console.warn('[Genkit Init] No explicit API keys found in environment. Falling back to default discovery.');
+  }
+}
+
 /**
  * Initialize a pool of Genkit instances, one for each API key.
  * If no keys are provided, it falls back to the default environment discovery.
