@@ -1,4 +1,3 @@
-
 'use server';
 /**
  * @fileOverview A Genkit flow for identifying and categorizing legal risks in a contract clause,
@@ -11,6 +10,7 @@
 
 import { ai } from '@/ai/genkit';
 import { z } from 'genkit';
+import { retryWithBackoff } from '@/lib/utils';
 
 const IdentifyContractRisksInputSchema = z.object({
   contractClause: z
@@ -108,7 +108,8 @@ const identifyContractRisksFlow = ai.defineFlow(
     outputSchema: IdentifyContractRisksOutputSchema,
   },
   async (input) => {
-    const { output } = await identifyContractRisksPrompt(input);
+    // Retry internally on the server to handle rate limits before returning to client
+    const { output } = await retryWithBackoff(() => identifyContractRisksPrompt(input));
     if (!output) {
       throw new Error('Failed to get a valid response from the LLM.');
     }

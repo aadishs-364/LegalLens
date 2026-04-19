@@ -9,6 +9,7 @@
 
 import {ai} from '@/ai/genkit';
 import {z} from 'genkit';
+import { retryWithBackoff } from '@/lib/utils';
 
 /**
  * @dev Input schema for the explainRiskImplications flow.
@@ -100,7 +101,8 @@ const explainRiskImplicationsGenkitFlow = ai.defineFlow(
     outputSchema: ExplainRiskImplicationsOutputSchema,
   },
   async input => {
-    const {output} = await explainRiskImplicationsPrompt(input);
+    // Retry internally on the server to handle rate limits before returning to client
+    const {output} = await retryWithBackoff(() => explainRiskImplicationsPrompt(input));
     if (!output) {
       throw new Error('Failed to generate risk implications: The LLM returned an empty response.');
     }

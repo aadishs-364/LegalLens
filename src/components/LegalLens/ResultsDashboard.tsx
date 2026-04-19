@@ -1,6 +1,6 @@
 "use client"
 
-import React, { useState, useCallback } from 'react';
+import React, { useState, useCallback, useRef } from 'react';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { RiskCard } from "./RiskCard";
@@ -12,7 +12,6 @@ import { toast } from "@/hooks/use-toast";
 import type { IdentifyContractRisksOutput } from "@/ai/flows/identify-contract-risks";
 import type { ExplainRiskImplicationsOutput } from "@/ai/flows/explain-risk-implications";
 import { explainRiskImplications } from "@/ai/flows/explain-risk-implications";
-import { retryWithBackoff } from "@/lib/utils";
 
 interface ResultsDashboardProps {
   data: IdentifyContractRisksOutput;
@@ -24,61 +23,59 @@ export function ResultsDashboard({ data }: ResultsDashboardProps) {
   const [loadingRisks, setLoadingRisks] = useState<Record<number, boolean>>({});
   const [expandedRisks, setExpandedRisks] = useState<Record<number, boolean>>({});
 
+  // Use refs to track current loading state inside concurrent closures
+  const loadingRef = useRef<Record<number, boolean>>({});
+  const detailsRef = useRef<Record<number, ExplainRiskImplicationsOutput>>({});
+
   const handleDeepDive = useCallback(async (index: number) => {
-    // If already loading or already have data, just toggle expansion
-    if (loadingRisks[index]) {
+    // Skip if already loading or we already have the data
+    if (loadingRef.current[index] || detailsRef.current[index]) {
       setExpandedRisks(prev => ({ ...prev, [index]: true }));
       return;
     }
     
-    if (riskDetails[index]) {
-      setExpandedRisks(prev => ({ ...prev, [index]: !prev[index] }));
-      return;
-    }
-    
-    // Start loading
+    // Start loading state
+    loadingRef.current[index] = true;
     setLoadingRisks(prev => ({ ...prev, [index]: true }));
     setExpandedRisks(prev => ({ ...prev, [index]: true }));
 
     try {
       const risk = data.risks[index];
-      // Use retry utility to handle 429 errors automatically
-      const result = await retryWithBackoff(() => explainRiskImplications({
+      // The AI Flow now handles its own exponential backoff internally!
+      const result = await explainRiskImplications({
         riskTitle: risk.riskFactor,
         originalFragment: risk.originalFragment || risk.explanation,
         severity: risk.severity,
         existingExplanation: risk.explanation
-      }));
+      });
       
+      detailsRef.current[index] = result;
       setRiskDetails(prev => ({ ...prev, [index]: result }));
     } catch (error: any) {
       console.error(`Deep dive failed for risk ${index}:`, error);
-      const isRateLimit = error?.message?.includes('429') || error?.message?.includes('RESOURCE_EXHAUSTED');
-      
       toast({
         variant: "destructive",
-        title: isRateLimit ? "AI Rate Limit" : "Deep Dive Failed",
-        description: isRateLimit 
-          ? "The AI is too busy. Please try individual deep dives after a short wait." 
-          : `Could not fetch details for: ${data.risks[index].riskFactor}`,
+        title: "Deep Dive Failed",
+        description: `Could not fetch insights for "${data.risks[index].riskFactor}". Please try again.`,
       });
       setExpandedRisks(prev => ({ ...prev, [index]: false }));
     } finally {
+      loadingRef.current[index] = false;
       setLoadingRisks(prev => ({ ...prev, [index]: false }));
     }
-  }, [data.risks, loadingRisks, riskDetails]);
+  }, [data.risks]);
 
   const handleDeepDiveAll = async () => {
     const indicesToFetch = data.risks
       .map((_, i) => i)
-      .filter(i => !riskDetails[i] && !loadingRisks[i]);
+      .filter(i => !detailsRef.current[i] && !loadingRef.current[i]);
 
     if (indicesToFetch.length === 0) {
       toast({
         title: "All Risks Analyzed",
-        description: "All identified risks have already been processed or are currently loading.",
+        description: "Everything has already been processed or is currently loading.",
       });
-      // Toggle all of them to expanded for visibility
+      // Toggle all to expanded for visibility
       const allExpanded = { ...expandedRisks };
       data.risks.forEach((_, i) => { allExpanded[i] = true; });
       setExpandedRisks(allExpanded);
@@ -87,14 +84,14 @@ export function ResultsDashboard({ data }: ResultsDashboardProps) {
 
     toast({
       title: "Batch Analysis Started",
-      description: `Analyzing ${indicesToFetch.length} risks. This may take a moment to avoid rate limits...`,
+      description: `Processing ${indicesToFetch.length} risks in the background...`,
     });
 
-    // Process deep dives one by one with a small delay to avoid hitting the 20 RPM limit
+    // Fire off all requests. The server-side flow handles retries per-request.
+    // We add a tiny stagger just to avoid client-side network queueing issues.
     for (const index of indicesToFetch) {
       handleDeepDive(index);
-      // Wait 1 second before starting the next one to space out requests
-      await new Promise(resolve => setTimeout(resolve, 1000));
+      await new Promise(resolve => setTimeout(resolve, 300));
     }
   };
 
@@ -125,8 +122,6 @@ export function ResultsDashboard({ data }: ResultsDashboardProps) {
         if (details.fairerAlternative) {
           text += `     - Suggested Alternative: ${details.fairerAlternative}\n`;
         }
-      } else if (loadingRisks[i]) {
-        text += `   (Detailed Analysis is still being generated...)\n`;
       }
       text += `\n`;
     });
@@ -144,8 +139,8 @@ export function ResultsDashboard({ data }: ResultsDashboardProps) {
 
     navigator.clipboard.writeText(text);
     toast({
-      title: "Comprehensive Report Copied",
-      description: "Full translation, glossary, and all generated deep dives are now in your clipboard.",
+      title: "Report Copied",
+      description: "Full analysis report is now in your clipboard.",
     });
   };
 
@@ -176,18 +171,10 @@ export function ResultsDashboard({ data }: ResultsDashboardProps) {
 
       <Tabs defaultValue="summary" className="flex-1 flex flex-col">
         <TabsList className="grid w-full grid-cols-4 bg-secondary/50 p-1">
-          <TabsTrigger value="summary" className="gap-2 text-xs">
-            Summary
-          </TabsTrigger>
-          <TabsTrigger value="plain" className="gap-2 text-xs">
-            Plain English
-          </TabsTrigger>
-          <TabsTrigger value="risks" className="gap-2 text-xs">
-            Risks ({data.risks.length})
-          </TabsTrigger>
-          <TabsTrigger value="glossary" className="gap-2 text-xs">
-            Glossary
-          </TabsTrigger>
+          <TabsTrigger value="summary" className="gap-2 text-xs">Summary</TabsTrigger>
+          <TabsTrigger value="plain" className="gap-2 text-xs">Plain English</TabsTrigger>
+          <TabsTrigger value="risks" className="gap-2 text-xs">Risks ({data.risks.length})</TabsTrigger>
+          <TabsTrigger value="glossary" className="gap-2 text-xs">Glossary</TabsTrigger>
         </TabsList>
 
         <div className="mt-4 flex-1 overflow-hidden rounded-xl border border-border/50 bg-card/30 backdrop-blur-sm">
@@ -248,26 +235,19 @@ export function ResultsDashboard({ data }: ResultsDashboardProps) {
                   </Button>
                 )}
               </div>
-              {data.risks.length > 0 ? (
-                <div className="space-y-4">
-                  {data.risks.map((risk, idx) => (
-                    <RiskCard 
-                      key={idx} 
-                      risk={risk} 
-                      isExplaining={loadingRisks[idx] || false}
-                      isExpanded={expandedRisks[idx] || false}
-                      details={riskDetails[idx] || null}
-                      onDeepDive={() => handleDeepDive(idx)}
-                      onToggleExpand={() => setExpandedRisks(prev => ({ ...prev, [idx]: !prev[idx] }))}
-                    />
-                  ))}
-                </div>
-              ) : (
-                <div className="flex flex-col items-center justify-center h-40 text-center text-muted-foreground">
-                  <CheckCircle2 className="h-10 w-10 mb-2 opacity-20" />
-                  <p>No major risks identified in this clause.</p>
-                </div>
-              )}
+              <div className="space-y-4">
+                {data.risks.map((risk, idx) => (
+                  <RiskCard 
+                    key={idx} 
+                    risk={risk} 
+                    isExplaining={loadingRisks[idx] || false}
+                    isExpanded={expandedRisks[idx] || false}
+                    details={riskDetails[idx] || null}
+                    onDeepDive={() => handleDeepDive(idx)}
+                    onToggleExpand={() => setExpandedRisks(prev => ({ ...prev, [idx]: !prev[idx] }))}
+                  />
+                ))}
+              </div>
             </ScrollArea>
           </TabsContent>
 
@@ -276,7 +256,7 @@ export function ResultsDashboard({ data }: ResultsDashboardProps) {
               <div className="space-y-6">
                 <div className="flex items-center justify-between sticky top-0 bg-card/30 backdrop-blur-md pb-2 z-10">
                   <h3 className="text-lg font-bold flex items-center gap-2 text-primary">
-                    < Book className="h-5 w-5" />
+                    <Book className="h-5 w-5" />
                     Terms Breakdown
                   </h3>
                   <div className="flex items-center gap-2 text-[10px] uppercase tracking-widest text-muted-foreground font-bold">
@@ -296,12 +276,8 @@ export function ResultsDashboard({ data }: ResultsDashboardProps) {
                       <TableBody>
                         {data.glossary.map((item, i) => (
                           <TableRow key={i} className="border-border/30">
-                            <TableCell className="font-bold text-primary align-top pt-4">
-                              {item.term}
-                            </TableCell>
-                            <TableCell className="text-muted-foreground leading-relaxed">
-                              {item.meaning}
-                            </TableCell>
+                            <TableCell className="font-bold text-primary align-top pt-4">{item.term}</TableCell>
+                            <TableCell className="text-muted-foreground leading-relaxed">{item.meaning}</TableCell>
                           </TableRow>
                         ))}
                       </TableBody>
