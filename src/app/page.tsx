@@ -9,7 +9,7 @@ import { SAMPLE_CLAUSE } from "./lib/sample-clause";
 import { ResultsDashboard } from "@/components/LegalLens/ResultsDashboard";
 import { identifyContractRisks, type IdentifyContractRisksOutput } from "@/ai/flows/identify-contract-risks";
 import { toast } from "@/hooks/use-toast";
-import { cn } from "@/lib/utils";
+import { cn, retryWithBackoff } from "@/lib/utils";
 
 interface HistoryItem {
   fullText: string;
@@ -49,7 +49,8 @@ export default function LegalLensPage() {
 
     setIsAnalyzing(true);
     try {
-      const data = await identifyContractRisks({ contractClause: inputText });
+      // Added retry logic for the main analysis
+      const data = await retryWithBackoff(() => identifyContractRisks({ contractClause: inputText }));
       
       if (!data.isValidClause) {
         toast({
@@ -71,12 +72,15 @@ export default function LegalLensPage() {
         setHistory(updatedHistory);
         localStorage.setItem('legallens_history_v2', JSON.stringify(updatedHistory));
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error(error);
+      const isRateLimit = error?.message?.includes('429') || error?.message?.includes('RESOURCE_EXHAUSTED');
       toast({
         variant: "destructive",
-        title: "Analysis Failed",
-        description: "An error occurred while communicating with the AI. Please try again.",
+        title: isRateLimit ? "Rate Limit Exceeded" : "Analysis Failed",
+        description: isRateLimit 
+          ? "The AI is currently busy. Please wait a moment and try again." 
+          : "An error occurred while communicating with the AI. Please try again.",
       });
     } finally {
       setIsAnalyzing(false);
@@ -94,6 +98,7 @@ export default function LegalLensPage() {
   };
 
   const handleHistoryClick = (item: HistoryItem) => {
+    // Restore the complete pasted text
     setInputText(item.fullText);
     if (item.results) {
       setResults(item.results);

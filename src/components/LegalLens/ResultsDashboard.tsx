@@ -1,4 +1,3 @@
-
 "use client"
 
 import React, { useState, useCallback } from 'react';
@@ -13,6 +12,7 @@ import { toast } from "@/hooks/use-toast";
 import type { IdentifyContractRisksOutput } from "@/ai/flows/identify-contract-risks";
 import type { ExplainRiskImplicationsOutput } from "@/ai/flows/explain-risk-implications";
 import { explainRiskImplications } from "@/ai/flows/explain-risk-implications";
+import { retryWithBackoff } from "@/lib/utils";
 
 interface ResultsDashboardProps {
   data: IdentifyContractRisksOutput;
@@ -42,20 +42,25 @@ export function ResultsDashboard({ data }: ResultsDashboardProps) {
 
     try {
       const risk = data.risks[index];
-      const result = await explainRiskImplications({
+      // Use retry utility to handle 429 errors automatically
+      const result = await retryWithBackoff(() => explainRiskImplications({
         riskTitle: risk.riskFactor,
         originalFragment: risk.originalFragment || risk.explanation,
         severity: risk.severity,
         existingExplanation: risk.explanation
-      });
+      }));
       
       setRiskDetails(prev => ({ ...prev, [index]: result }));
-    } catch (error) {
+    } catch (error: any) {
       console.error(`Deep dive failed for risk ${index}:`, error);
+      const isRateLimit = error?.message?.includes('429') || error?.message?.includes('RESOURCE_EXHAUSTED');
+      
       toast({
         variant: "destructive",
-        title: "Deep Dive Failed",
-        description: `Could not fetch details for: ${data.risks[index].riskFactor}`,
+        title: isRateLimit ? "AI Rate Limit" : "Deep Dive Failed",
+        description: isRateLimit 
+          ? "The AI is too busy. Please try individual deep dives after a short wait." 
+          : `Could not fetch details for: ${data.risks[index].riskFactor}`,
       });
       setExpandedRisks(prev => ({ ...prev, [index]: false }));
     } finally {
@@ -82,12 +87,15 @@ export function ResultsDashboard({ data }: ResultsDashboardProps) {
 
     toast({
       title: "Batch Analysis Started",
-      description: `Analyzing ${indicesToFetch.length} risks in the background...`,
+      description: `Analyzing ${indicesToFetch.length} risks. This may take a moment to avoid rate limits...`,
     });
 
-    // Run all analysis requests in parallel. 
-    // They update top-level state independently.
-    indicesToFetch.forEach(index => handleDeepDive(index));
+    // Process deep dives one by one with a small delay to avoid hitting the 20 RPM limit
+    for (const index of indicesToFetch) {
+      handleDeepDive(index);
+      // Wait 1 second before starting the next one to space out requests
+      await new Promise(resolve => setTimeout(resolve, 1000));
+    }
   };
 
   const handleCopy = () => {
@@ -268,7 +276,7 @@ export function ResultsDashboard({ data }: ResultsDashboardProps) {
               <div className="space-y-6">
                 <div className="flex items-center justify-between sticky top-0 bg-card/30 backdrop-blur-md pb-2 z-10">
                   <h3 className="text-lg font-bold flex items-center gap-2 text-primary">
-                    <Book className="h-5 w-5" />
+                    < Book className="h-5 w-5" />
                     Terms Breakdown
                   </h3>
                   <div className="flex items-center gap-2 text-[10px] uppercase tracking-widest text-muted-foreground font-bold">
