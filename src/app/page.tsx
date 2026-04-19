@@ -29,7 +29,7 @@ export default function LegalLensPage() {
 
   // Hydration safety for localStorage
   useEffect(() => {
-    const saved = localStorage.getItem('legallens_history_v3');
+    const saved = localStorage.getItem('legallens_history_v4');
     if (saved) {
       try {
         setHistory(JSON.parse(saved));
@@ -71,7 +71,7 @@ export default function LegalLensPage() {
         };
         const updatedHistory = [newEntry, ...history.filter(h => h.fullText !== inputText).slice(0, 9)];
         setHistory(updatedHistory);
-        localStorage.setItem('legallens_history_v3', JSON.stringify(updatedHistory));
+        localStorage.setItem('legallens_history_v4', JSON.stringify(updatedHistory));
       }
     } catch (error: any) {
       console.error("Analysis Error:", error);
@@ -88,7 +88,7 @@ export default function LegalLensPage() {
         toast({
           variant: "destructive",
           title: "Analysis Failed",
-          description: error?.message || "An error occurred during analysis.",
+          description: error?.message || "An unexpected response was received from the server. Please try a shorter clause or try again later.",
         });
       }
     } finally {

@@ -54,10 +54,9 @@ const explainRiskImplicationsGenkitFlow = ai.defineFlow(
     outputSchema: ExplainRiskImplicationsOutputSchema,
   },
   async input => {
-    // Optimized for concurrency and timeout safety
     const { output } = await retryWithBackoff(
       async (index) => explainRiskImplicationsPrompts[index](input),
-      3,
+      8,
       2000,
       allAis.length
     );

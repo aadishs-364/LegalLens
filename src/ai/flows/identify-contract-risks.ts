@@ -105,10 +105,9 @@ const identifyContractRisksFlow = ai.defineFlow(
     outputSchema: IdentifyContractRisksOutputSchema,
   },
   async (input) => {
-    // Rotation logic across available API keys handled by retryWithBackoff
     const { output } = await retryWithBackoff(
       async (index) => identifyContractRisksPrompts[index](input),
-      3,
+      8, // More retries to handle free tier limits
       2000,
       allAis.length
     );
