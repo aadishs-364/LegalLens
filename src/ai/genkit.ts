@@ -1,5 +1,5 @@
-import {genkit, z} from 'genkit';
-import {googleAI} from '@genkit-ai/google-genai';
+import { genkit, z } from 'genkit';
+import { googleAI } from '@genkit-ai/googleai';
 
 /**
  * Detect available API keys from environment variables.
@@ -18,42 +18,43 @@ const keys = Array.from(new Set([
   process.env.GEMINI_API_KEY_5,
 ])).filter(Boolean) as string[];
 
-// Diagnostic log (visible in server terminal)
+// Diagnostic log (server-side only)
 if (typeof window === 'undefined') {
   console.log(`[Genkit Init] Detected ${keys.length} unique API key(s) for rotation.`);
   if (keys.length === 0) {
     console.warn('[Genkit Init] No API keys found in environment. Please check your .env file.');
-  } else {
-    keys.forEach((k, i) => {
-      console.log(`[Genkit Init] Key #${i + 1}: ${k.substring(0, 6)}...${k.substring(k.length - 4)}`);
-    });
   }
 }
 
 /**
- * Initialize a pool of Genkit instances. 
+ * Initialize a pool of Genkit instances using the stable googleAI plugin.
  */
-export const allAis = keys.length > 0 
-  ? keys.map(key => genkit({
-      plugins: [googleAI({ apiKey: key })],
-    }))
-  : [genkit({
-      plugins: [googleAI()],
-    })];
+export const allAis = keys.length > 0
+  ? keys.map(key =>
+      genkit({
+        plugins: [googleAI({ apiKey: key })],
+      })
+    )
+  : [
+      genkit({
+        plugins: [googleAI()],
+      }),
+    ];
 
 /**
- * Primary AI instance for general use.
+ * Primary AI instance
  */
 export const ai = allAis[0];
 
 /**
- * Helper to define a prompt across all available AI instances for fallback support.
- * Uses the stable gemini-1.5-flash model to ensure v1 API compatibility.
+ * Helper to define a prompt across all AI instances (with fallback support)
+ * Uses stable gemini-1.5-flash model identifier.
  */
 export function defineMultiPrompt<I extends z.ZodTypeAny, O extends z.ZodTypeAny>(options: any) {
-  return allAis.map(instance => instance.definePrompt({
-    ...options,
-    // Using the stable identifier to force v1 API usage and avoid 404 v1beta errors
-    model: 'googleai/gemini-1.5-flash',
-  }));
+  return allAis.map(instance =>
+    instance.definePrompt({
+      ...options,
+      model: 'gemini-1.5-flash',
+    })
+  );
 }
