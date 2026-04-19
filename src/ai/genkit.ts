@@ -2,20 +2,15 @@ import { genkit, z } from 'genkit';
 import { googleAI } from '@genkit-ai/google-genai';
 
 /**
- * Detect available API keys from environment variables.
- * Supports both GOOGLE_GENAI_API_KEY and GEMINI_API_KEY prefixes (1-5).
+ * Detect available API keys from environment variables for the 3-key pool.
  */
 const keys = Array.from(new Set([
   process.env.GOOGLE_GENAI_API_KEY,
   process.env.GOOGLE_GENAI_API_KEY_2,
   process.env.GOOGLE_GENAI_API_KEY_3,
-  process.env.GOOGLE_GENAI_API_KEY_4,
-  process.env.GOOGLE_GENAI_API_KEY_5,
   process.env.GEMINI_API_KEY,
   process.env.GEMINI_API_KEY_2,
   process.env.GEMINI_API_KEY_3,
-  process.env.GEMINI_API_KEY_4,
-  process.env.GEMINI_API_KEY_5,
 ])).filter(Boolean) as string[];
 
 // Diagnostic log (server-side only)
@@ -27,7 +22,7 @@ if (typeof window === 'undefined') {
 }
 
 /**
- * Initialize a pool of Genkit instances using the stable googleAI plugin.
+ * Initialize a pool of Genkit instances.
  */
 export const allAis = keys.length > 0
   ? keys.map(key =>
@@ -48,7 +43,7 @@ export const ai = allAis[0];
 
 /**
  * Helper to define a prompt across all AI instances.
- * Using the explicit 'googleai/gemini-1.5-flash' identifier ensures stable routing.
+ * Using 'googleai/gemini-1.5-flash' ensures routing to the stable v1 endpoint.
  */
 export function defineMultiPrompt<I extends z.ZodTypeAny, O extends z.ZodTypeAny>(options: any) {
   return allAis.map((instance) =>

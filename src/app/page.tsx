@@ -82,7 +82,7 @@ export default function LegalLensPage() {
         toast({
           variant: "destructive",
           title: "AI Capacity Reached",
-          description: "All API keys are currently busy. Rotating instances automatically...",
+          description: "Rotating API instances to find available capacity...",
         });
       } else {
         toast({
