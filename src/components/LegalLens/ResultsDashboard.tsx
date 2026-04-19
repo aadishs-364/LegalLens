@@ -1,7 +1,7 @@
 
 "use client"
 
-import React, { useState } from 'react';
+import React, { useState, useCallback } from 'react';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { RiskCard } from "./RiskCard";
@@ -19,9 +19,76 @@ interface ResultsDashboardProps {
 }
 
 export function ResultsDashboard({ data }: ResultsDashboardProps) {
+  // All state is kept here at the top level to persist across tab changes
   const [riskDetails, setRiskDetails] = useState<Record<number, ExplainRiskImplicationsOutput>>({});
   const [loadingRisks, setLoadingRisks] = useState<Record<number, boolean>>({});
   const [expandedRisks, setExpandedRisks] = useState<Record<number, boolean>>({});
+
+  const handleDeepDive = useCallback(async (index: number) => {
+    // If already loading or already have data, just toggle expansion
+    if (loadingRisks[index]) {
+      setExpandedRisks(prev => ({ ...prev, [index]: true }));
+      return;
+    }
+    
+    if (riskDetails[index]) {
+      setExpandedRisks(prev => ({ ...prev, [index]: !prev[index] }));
+      return;
+    }
+    
+    // Start loading
+    setLoadingRisks(prev => ({ ...prev, [index]: true }));
+    setExpandedRisks(prev => ({ ...prev, [index]: true }));
+
+    try {
+      const risk = data.risks[index];
+      const result = await explainRiskImplications({
+        riskTitle: risk.riskFactor,
+        originalFragment: risk.originalFragment || risk.explanation,
+        severity: risk.severity,
+        existingExplanation: risk.explanation
+      });
+      
+      setRiskDetails(prev => ({ ...prev, [index]: result }));
+    } catch (error) {
+      console.error(`Deep dive failed for risk ${index}:`, error);
+      toast({
+        variant: "destructive",
+        title: "Deep Dive Failed",
+        description: `Could not fetch details for: ${data.risks[index].riskFactor}`,
+      });
+      setExpandedRisks(prev => ({ ...prev, [index]: false }));
+    } finally {
+      setLoadingRisks(prev => ({ ...prev, [index]: false }));
+    }
+  }, [data.risks, loadingRisks, riskDetails]);
+
+  const handleDeepDiveAll = async () => {
+    const indicesToFetch = data.risks
+      .map((_, i) => i)
+      .filter(i => !riskDetails[i] && !loadingRisks[i]);
+
+    if (indicesToFetch.length === 0) {
+      toast({
+        title: "All Risks Analyzed",
+        description: "All identified risks have already been processed or are currently loading.",
+      });
+      // Toggle all of them to expanded for visibility
+      const allExpanded = { ...expandedRisks };
+      data.risks.forEach((_, i) => { allExpanded[i] = true; });
+      setExpandedRisks(allExpanded);
+      return;
+    }
+
+    toast({
+      title: "Batch Analysis Started",
+      description: `Analyzing ${indicesToFetch.length} risks in the background...`,
+    });
+
+    // Run all analysis requests in parallel. 
+    // They update top-level state independently.
+    indicesToFetch.forEach(index => handleDeepDive(index));
+  };
 
   const handleCopy = () => {
     let text = `LegalLens AI Analysis Report\n`;
@@ -37,19 +104,21 @@ export function ResultsDashboard({ data }: ResultsDashboardProps) {
     text += `IDENTIFIED RISKS (${data.risks.length})\n`;
     text += `-------------------------\n`;
     data.risks.forEach((risk, i) => {
-      text += `[${risk.severity}] ${risk.riskFactor}\n`;
-      text += `Category: ${risk.category}\n`;
-      text += `Overview: ${risk.explanation}\n`;
+      text += `${i + 1}. [${risk.severity}] ${risk.riskFactor}\n`;
+      text += `   Category: ${risk.category}\n`;
+      text += `   Overview: ${risk.explanation}\n`;
       
       const details = riskDetails[i];
       if (details) {
-        text += `Deep Dive Analysis:\n`;
-        text += `  - Impact: ${details.detailedExplanation}\n`;
-        text += `  - Consequence: ${details.realWorldImplications}\n`;
-        text += `  - Lawyer Tip: ${details.lawyerTip}\n`;
+        text += `   Detailed Analysis:\n`;
+        text += `     - Why it matters: ${details.detailedExplanation}\n`;
+        text += `     - Real-world impact: ${details.realWorldImplications}\n`;
+        text += `     - Lawyer Tip: ${details.lawyerTip}\n`;
         if (details.fairerAlternative) {
-          text += `  - Fairer Alternative: ${details.fairerAlternative}\n`;
+          text += `     - Suggested Alternative: ${details.fairerAlternative}\n`;
         }
+      } else if (loadingRisks[i]) {
+        text += `   (Detailed Analysis is still being generated...)\n`;
       }
       text += `\n`;
     });
@@ -74,61 +143,6 @@ export function ResultsDashboard({ data }: ResultsDashboardProps) {
 
   const handlePrint = () => {
     window.print();
-  };
-
-  const handleDeepDive = async (index: number) => {
-    if (loadingRisks[index]) return;
-    
-    if (riskDetails[index]) {
-      setExpandedRisks(prev => ({ ...prev, [index]: !prev[index] }));
-      return;
-    }
-    
-    setLoadingRisks(prev => ({ ...prev, [index]: true }));
-    setExpandedRisks(prev => ({ ...prev, [index]: true }));
-
-    try {
-      const risk = data.risks[index];
-      const result = await explainRiskImplications({
-        riskTitle: risk.riskFactor,
-        originalFragment: risk.originalFragment || risk.explanation,
-        severity: risk.severity,
-        existingExplanation: risk.explanation
-      });
-      setRiskDetails(prev => ({ ...prev, [index]: result }));
-    } catch (error) {
-      console.error(error);
-      toast({
-        variant: "destructive",
-        title: "Deep Dive Failed",
-        description: `Could not fetch details for: ${data.risks[index].riskFactor}`,
-      });
-      setExpandedRisks(prev => ({ ...prev, [index]: false }));
-    } finally {
-      setLoadingRisks(prev => ({ ...prev, [index]: false }));
-    }
-  };
-
-  const handleDeepDiveAll = async () => {
-    const indicesToFetch = data.risks
-      .map((_, i) => i)
-      .filter(i => !riskDetails[i] && !loadingRisks[i]);
-
-    if (indicesToFetch.length === 0) {
-      toast({
-        title: "All Risks Analyzed",
-        description: "All identified risks have already been processed or are currently loading.",
-      });
-      return;
-    }
-
-    toast({
-      title: "Batch Analysis Started",
-      description: `Analyzing ${indicesToFetch.length} risks in the background...`,
-    });
-
-    // Fire all requests in parallel
-    indicesToFetch.forEach(index => handleDeepDive(index));
   };
 
   const paragraphs = data.plainEnglish.split(/\n\n+/).filter(p => p.trim().length > 0);

@@ -1,3 +1,4 @@
+
 'use server';
 /**
  * @fileOverview A Genkit flow for identifying and categorizing legal risks in a contract clause,
@@ -80,7 +81,8 @@ const identifyContractRisksPrompt = ai.definePrompt({
 CRITICAL INSTRUCTIONS FOR 'plainEnglish':
 1. Translate the 'contractClause' into clear plain English.
 2. YOU MUST MIRROR THE EXACT STRUCTURE of the original text. 
-3. Use double newlines (\\n\\n) to separate distinct paragraphs, clauses, or numbered points.
+3. Use double newlines (\\n\\n) to separate distinct paragraphs, clauses, or numbered points. 
+4. DO NOT group multiple distinct legal clauses into a single giant paragraph.
 
 Instructions for Glossary (CORE DIFFERENTIATOR):
 1. Identify specific, complex legal terms and distinct legal OBLIGATIONS (e.g., "Indemnify", "Force Majeure", "Arbitration").
