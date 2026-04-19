@@ -2,7 +2,7 @@ import { genkit, z } from 'genkit';
 import { googleAI } from '@genkit-ai/google-genai';
 
 /**
- * Detect available API keys from environment variables for the 3-key pool.
+ * Detect exactly 3 API keys for the rotation pool.
  */
 const keys = Array.from(new Set([
   process.env.GOOGLE_GENAI_API_KEY,
@@ -11,13 +11,13 @@ const keys = Array.from(new Set([
   process.env.GEMINI_API_KEY,
   process.env.GEMINI_API_KEY_2,
   process.env.GEMINI_API_KEY_3,
-])).filter(Boolean) as string[];
+])).filter(Boolean).slice(0, 3) as string[];
 
 // Diagnostic log (server-side only)
 if (typeof window === 'undefined') {
-  console.log(`[Genkit Init] Detected ${keys.length} unique API key(s) for rotation.`);
+  console.log(`[Genkit Init] Running in 3-key stable mode. Detected ${keys.length} key(s).`);
   if (keys.length === 0) {
-    console.warn('[Genkit Init] No API keys found in environment. Please check your .env file.');
+    console.warn('[Genkit Init] No API keys found. Please check your .env file.');
   }
 }
 
