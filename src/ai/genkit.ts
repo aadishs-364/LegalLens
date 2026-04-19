@@ -1,7 +1,7 @@
 
 import { genkit, z } from 'genkit';
 import { googleAI } from '@genkit-ai/google-genai';
-import { openai } from 'genkitx-openai';
+import * as genkitOpenAI from 'genkitx-openai';
 
 const GOOGLE_MODEL = 'googleai/gemini-2.0-flash-lite';
 const OPENROUTER_MODEL = 'openai/google/gemini-2.0-flash-lite:free';
@@ -36,7 +36,7 @@ export const allAisWithModels = [
   })),
   ...(openRouterKey ? [{
     instance: genkit({
-      plugins: [openai({ 
+      plugins: [genkitOpenAI.openai({ 
         apiKey: openRouterKey, 
         config: { baseURL: 'https://openrouter.ai/api/v1' } 
       })],
@@ -45,7 +45,7 @@ export const allAisWithModels = [
   }] : [])
 ];
 
-// Fallback for initialization
+// Fallback for initialization if no keys are found
 if (allAisWithModels.length === 0) {
   allAisWithModels.push({
     instance: genkit({ plugins: [googleAI()] }),
