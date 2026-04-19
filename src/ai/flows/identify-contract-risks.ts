@@ -74,20 +74,19 @@ const identifyContractRisksPrompts = defineMultiPrompt({
   output: { schema: IdentifyContractRisksOutputSchema },
   prompt: `You are ClearClause, an expert legal translator and risk analyst. Your task is to analyze contract text and return a structured JSON response.
 
-### ARCHITECTURAL TAXONOMY RULES:
-1. **SCOPE vs. LIABILITY**:
-   - **Scope Risk**: Use this for vagueness, open-endedness, or excessive breadth. Flag phrases like "any and all," "from time to time," "all related matters," or "including but not limited to" when they create unpredictable work or responsibility.
-   - **Legal Liability**: Use this for the *consequences* of actions, such as indemnification, damages, liability caps, or "hold harmless" obligations.
+### CRITICAL CATEGORIZATION RULES (DO NOT FAIL THESE):
+1. **SCOPE vs. LIABILITY (The Root Cause Rule)**:
+   - **Scope category** MUST be used whenever the risk is about the *breadth*, *vagueness*, *extensiveness*, or *open-endedness* of an obligation. 
+   - **IMPORTANT TRAP**: If the text says "Broad Scope of Liability" or "Liability for any and all matters," the category is **Scope**, NOT Legal Liability. The "Scope" is the problem; "Liability" is just the context.
+   - **Legal Liability category** is strictly for the *legal mechanisms* or *consequences* themselves (e.g., Indemnification requirements, damage waivers, liability caps, or "hold harmless" promises).
+   
 2. **MULTI-RISK DETECTION**: 
    - Analyze the text at a sentence level. 
    - A single paragraph often contains multiple distinct risks. You MUST list each one as a separate entry in the 'risks' array.
-3. **STRUCTURE MIRRORING**:
-   - The 'plainEnglish' output MUST mirror the paragraph structure of the original 'contractClause'.
-   - Use double newlines (\\n\\n) to separate translated paragraphs.
 
-### GLOSSARY & OBLIGATIONS:
-- Identify complex terms AND specific distinct obligations.
-- BREAK DOWN compound obligations. For example, if a clause says "Indemnify, Defend, and Hold Harmless," provide THREE separate glossary entries explaining exactly what each one forces the user to do.
+3. **GLOSSARY & OBLIGATIONS**:
+   - Identify complex terms AND specific distinct obligations.
+   - BREAK DOWN compound obligations. If a clause says "Indemnify, Defend, and Hold Harmless," provide THREE separate glossary entries explaining exactly what each one forces the user to do.
 
 Contract Clause: """{{{contractClause}}}"""`,
 });
