@@ -15,7 +15,7 @@ const IdentifyContractRisksInputSchema = z.object({
     .string()
     .min(50)
     .max(10000)
-    .describe('The legal contract clause to analyze.'),
+    .describe('The legal contract text or clause to analyze.'),
 });
 export type IdentifyContractRisksInput = z.infer<typeof IdentifyContractRisksInputSchema>;
 
@@ -54,15 +54,15 @@ const IdentifyContractRisksOutputSchema = z.object({
   isValidClause: z
     .boolean()
     .describe(
-      'True if the input appears to be a valid contract clause, false otherwise.'
+      'True if the input appears to be a valid contract clause or document, false otherwise.'
     ),
   plainEnglish: z
     .string()
-    .describe('Full plain-language rewrite of the entire clause.'),
+    .describe('Full plain-language rewrite of the entire text, preserving structure with paragraphs or bullets.'),
   summary: z.object({
     verdict: z
       .enum(['Low', 'Medium', 'High', 'Critical'])
-      .describe('Overall risk verdict for the clause.'),
+      .describe('Overall risk verdict for the text.'),
     oneSentence: z.string().describe('A one-sentence overall risk summary.'),
   }),
   risks: z.array(RiskSchema).describe('An array of identified risks.'),
@@ -86,7 +86,7 @@ You MUST respond with ONLY valid JSON matching the exact schema provided in your
 If isValidClause is false, return empty arrays and explain in plainEnglish that the input doesn't appear to be a contract clause.
 
 Instructions:
-1. Translate the entire provided 'contractClause' into clear, concise, easy-to-understand plain English.
+1. Translate the entire provided 'contractClause' into clear, concise, easy-to-understand plain English. If the input contains multiple clauses, paragraphs, or distinct sections, preserve that structure in your translation using paragraph breaks or bullet points to ensure high readability.
 2. Identify and highlight all potential legal risks within the 'contractClause'. The specific risk categories to detect are: Indemnification, Limitation of Liability, Auto-Renewal, Unilateral Modification, Jurisdiction/Governing Law, IP Assignment, Non-Compete/Non-Solicitation, Data Privacy, Termination Without Cause, Liquidated Damages. If a risk doesn't fit these, use 'Other'.
 3. For each identified risk, provide a 'riskTitle', categorize it, assign a 'severity' (Low, Medium, High, Critical), extract the 'exact original fragment' from the input that triggered the risk, 'explain' why it matters in plain English, and suggest a 'lawyerTip' which is a specific question the user should ask a lawyer.
 4. Provide a one-sentence overall risk 'verdict' for the entire clause.

@@ -28,7 +28,11 @@ const translateLegalClausePrompt = ai.definePrompt({
   name: 'translateLegalClausePrompt',
   input: { schema: TranslateLegalClauseInputSchema },
   output: { schema: TranslateLegalClauseOutputSchema },
-  prompt: `You are an expert legal analyst and translator. Your task is to translate the provided legal clause into plain, clear, and concise English while maintaining its original legal intent. The translation should be easily understandable by a non-expert, akin to something a smart 16-year-old could comprehend. Provide only the plain English translation, formatted as JSON.
+  prompt: `You are an expert legal analyst and translator. Your task is to translate the provided legal clause into plain, clear, and concise English while maintaining its original legal intent. The translation should be easily understandable by a non-expert, akin to something a smart 16-year-old could comprehend. 
+
+If the provided text contains multiple clauses or sections, preserve that structure in your translation using paragraph breaks or bullet points.
+
+Provide only the plain English translation, formatted as JSON.
 
 Legal Clause: {{{clauseText}}}`,
 });
