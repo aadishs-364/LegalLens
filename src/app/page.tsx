@@ -1,6 +1,6 @@
 "use client"
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { Card } from "@/components/ui/card";
 import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
@@ -24,6 +24,8 @@ export default function LegalLensPage() {
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [results, setResults] = useState<IdentifyContractRisksOutput | null>(null);
   const [history, setHistory] = useState<HistoryItem[]>([]);
+  
+  const historyRef = useRef<HTMLDivElement>(null);
 
   // Hydration safety for localStorage
   useEffect(() => {
@@ -49,7 +51,6 @@ export default function LegalLensPage() {
 
     setIsAnalyzing(true);
     try {
-      // Added robust retry logic for the main analysis
       const data = await retryWithBackoff(() => identifyContractRisks({ contractClause: inputText }));
       
       if (!data.isValidClause) {
@@ -79,8 +80,8 @@ export default function LegalLensPage() {
       if (isRateLimit) {
         toast({
           variant: "destructive",
-          title: "AI Busy (Rate Limit)",
-          description: "The AI free tier is currently overloaded. Please wait 30 seconds and try again, or add more API keys to your configuration.",
+          title: "AI Capacity Reached",
+          description: "All available API keys are currently at their limit. Please wait 30 seconds.",
         });
       } else {
         console.error("Analysis Error:", error);
@@ -106,7 +107,6 @@ export default function LegalLensPage() {
   };
 
   const handleHistoryClick = (item: HistoryItem) => {
-    // Restore the complete pasted text
     setInputText(item.fullText);
     if (item.results) {
       setResults(item.results);
@@ -117,6 +117,18 @@ export default function LegalLensPage() {
       title: "History Restored",
       description: "Previous contract text and analysis have been loaded.",
     });
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
+
+  const scrollToHistory = () => {
+    if (historyRef.current) {
+      historyRef.current.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    } else {
+      toast({
+        title: "No History",
+        description: "You haven't performed any analyses yet.",
+      });
+    }
   };
 
   const charCount = inputText.length;
@@ -138,10 +150,13 @@ export default function LegalLensPage() {
           </div>
           
           <nav className="hidden md:flex items-center gap-6">
-            <div className="flex items-center gap-1.5 text-xs font-bold uppercase tracking-widest text-muted-foreground hover:text-primary transition-colors cursor-pointer">
+            <button 
+              onClick={scrollToHistory}
+              className="flex items-center gap-1.5 text-xs font-bold uppercase tracking-widest text-muted-foreground hover:text-primary transition-colors cursor-pointer"
+            >
               <Clock className="h-4 w-4" />
               History
-            </div>
+            </button>
             <div className="h-4 w-px bg-border" />
             <Button variant="outline" size="sm" className="rounded-full border-primary/50 text-primary hover:bg-primary/10">
               Upgrade to Pro
@@ -231,7 +246,7 @@ export default function LegalLensPage() {
             
             {/* History Section */}
             {history.length > 0 && (
-              <div className="space-y-4 pt-4 border-t border-border/30">
+              <div ref={historyRef} className="space-y-4 pt-4 border-t border-border/30 scroll-mt-20">
                 <h3 className="text-xs font-bold uppercase tracking-widest text-muted-foreground flex items-center gap-2">
                   <Clock className="h-4 w-4" />
                   Recent Analyses
@@ -338,7 +353,7 @@ export default function LegalLensPage() {
           </div>
         </div>
         <div className="container mx-auto mt-12 pt-8 border-t border-border/20 text-center">
-           <p className="text-[10px] text-muted-foreground uppercase tracking-widest">© 2024 LegalLens. All rights reserved.</p>
+           <p className="text-[10px] text-muted-foreground uppercase tracking-widest">© 2026 LegalLens. All rights reserved.</p>
         </div>
       </footer>
     </div>
