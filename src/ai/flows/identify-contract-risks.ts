@@ -62,10 +62,23 @@ const IdentifyContractRisksOutputSchema = z.object({
 });
 export type IdentifyContractRisksOutput = z.infer<typeof IdentifyContractRisksOutputSchema>;
 
+export type IdentifyContractRisksResult = 
+  | { success: true; data: IdentifyContractRisksOutput }
+  | { success: false; error: string };
+
 export async function identifyContractRisks(
   input: IdentifyContractRisksInput
-): Promise<IdentifyContractRisksOutput> {
-  return identifyContractRisksFlow(input);
+): Promise<IdentifyContractRisksResult> {
+  try {
+    const output = await identifyContractRisksFlow(input);
+    return { success: true, data: output };
+  } catch (error: any) {
+    console.error("identifyContractRisks error:", error);
+    return { 
+      success: false, 
+      error: error.message || "An unexpected error occurred during analysis. Please try again later." 
+    };
+  }
 }
 
 const identifyContractRisksPrompts = defineMultiPrompt({
@@ -93,7 +106,7 @@ const identifyContractRisksFlow = ai.defineFlow(
   async (input) => {
     const { output } = await retryWithBackoff(
       async (index) => identifyContractRisksPrompts[index](input),
-      5, // Balanced retries to stay within server timeout
+      5, 
       1000,
       allAis.length
     );

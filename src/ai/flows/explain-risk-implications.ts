@@ -23,10 +23,23 @@ const ExplainRiskImplicationsOutputSchema = z.object({
 });
 export type ExplainRiskImplicationsOutput = z.infer<typeof ExplainRiskImplicationsOutputSchema>;
 
+export type ExplainRiskImplicationsResult = 
+  | { success: true; data: ExplainRiskImplicationsOutput }
+  | { success: false; error: string };
+
 export async function explainRiskImplications(
   input: ExplainRiskImplicationsInput
-): Promise<ExplainRiskImplicationsOutput> {
-  return explainRiskImplicationsGenkitFlow(input);
+): Promise<ExplainRiskImplicationsResult> {
+  try {
+    const output = await explainRiskImplicationsGenkitFlow(input);
+    return { success: true, data: output };
+  } catch (error: any) {
+    console.error("explainRiskImplications error:", error);
+    return { 
+      success: false, 
+      error: error.message || "Failed to generate detailed risk insights." 
+    };
+  }
 }
 
 const explainRiskImplicationsPrompts = defineMultiPrompt({

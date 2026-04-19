@@ -51,8 +51,19 @@ export default function LegalLensPage() {
 
     setIsAnalyzing(true);
     try {
-      const data = await identifyContractRisks({ contractClause: inputText });
+      const response = await identifyContractRisks({ contractClause: inputText });
       
+      if (!response.success) {
+        toast({
+          variant: "destructive",
+          title: "Analysis Failed",
+          description: response.error,
+        });
+        setIsAnalyzing(false);
+        return;
+      }
+
+      const data = response.data;
       if (!data.isValidClause) {
         toast({
           variant: "destructive",
@@ -74,23 +85,12 @@ export default function LegalLensPage() {
         localStorage.setItem('legallens_history_v4', JSON.stringify(updatedHistory));
       }
     } catch (error: any) {
-      console.error("Analysis Error:", error);
-      const errorMessage = String(error?.message || "").toUpperCase();
-      const isRateLimit = errorMessage.includes('429') || errorMessage.includes('RESOURCE_EXHAUSTED') || errorMessage.includes('LIMIT');
-      
-      if (isRateLimit) {
-        toast({
-          variant: "destructive",
-          title: "AI Capacity Reached",
-          description: "Rotating API instances to find available capacity...",
-        });
-      } else {
-        toast({
-          variant: "destructive",
-          title: "Analysis Failed",
-          description: error?.message || "An unexpected response was received from the server. Please try a shorter clause or try again later.",
-        });
-      }
+      console.error("Unexpected Client Error:", error);
+      toast({
+        variant: "destructive",
+        title: "Unexpected Error",
+        description: "A client-side error occurred. Please refresh and try again.",
+      });
     } finally {
       setIsAnalyzing(false);
     }

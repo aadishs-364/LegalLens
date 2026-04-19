@@ -41,22 +41,31 @@ export function ResultsDashboard({ data }: ResultsDashboardProps) {
 
     try {
       const risk = data.risks[index];
-      // The AI Flow now handles its own exponential backoff internally!
-      const result = await explainRiskImplications({
+      const response = await explainRiskImplications({
         riskTitle: risk.riskFactor,
         originalFragment: risk.originalFragment || risk.explanation,
         severity: risk.severity,
         existingExplanation: risk.explanation
       });
       
-      detailsRef.current[index] = result;
-      setRiskDetails(prev => ({ ...prev, [index]: result }));
+      if (!response.success) {
+        toast({
+          variant: "destructive",
+          title: "Deep Dive Failed",
+          description: response.error,
+        });
+        setExpandedRisks(prev => ({ ...prev, [index]: false }));
+        return;
+      }
+
+      detailsRef.current[index] = response.data;
+      setRiskDetails(prev => ({ ...prev, [index]: response.data }));
     } catch (error: any) {
-      console.error(`Deep dive failed for risk ${index}:`, error);
+      console.error(`Unexpected Deep dive error for risk ${index}:`, error);
       toast({
         variant: "destructive",
-        title: "Deep Dive Failed",
-        description: `Could not fetch insights for "${data.risks[index].riskFactor}". Please try again.`,
+        title: "Deep Dive Error",
+        description: "An unexpected error occurred. Please try again later.",
       });
       setExpandedRisks(prev => ({ ...prev, [index]: false }));
     } finally {
@@ -88,7 +97,6 @@ export function ResultsDashboard({ data }: ResultsDashboardProps) {
     });
 
     // Fire off all requests. The server-side flow handles retries per-request.
-    // We add a tiny stagger just to avoid client-side network queueing issues.
     for (const index of indicesToFetch) {
       handleDeepDive(index);
       await new Promise(resolve => setTimeout(resolve, 300));
