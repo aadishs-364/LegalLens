@@ -7,8 +7,8 @@
  * - ExplainRiskImplicationsOutput - The return type for the explainRiskImplications function.
  */
 
-import {ai} from '@/ai/genkit';
-import {z} from 'genkit';
+import { ai, allAis, defineMultiPrompt } from '@/ai/genkit';
+import { z } from 'genkit';
 import { retryWithBackoff } from '@/lib/utils';
 
 /**
@@ -63,10 +63,9 @@ export async function explainRiskImplications(
 }
 
 /**
- * Genkit prompt definition for explaining contract risks.
- * Instructs the LLM to act as an expert legal analyst and plain English translator.
+ * Genkit prompt definition for explaining contract risks across all instances.
  */
-const explainRiskImplicationsPrompt = ai.definePrompt({
+const explainRiskImplicationsPrompts = defineMultiPrompt({
   name: 'explainRiskImplicationsPrompt',
   input: {schema: ExplainRiskImplicationsInputSchema},
   output: {schema: ExplainRiskImplicationsOutputSchema},
@@ -101,8 +100,14 @@ const explainRiskImplicationsGenkitFlow = ai.defineFlow(
     outputSchema: ExplainRiskImplicationsOutputSchema,
   },
   async input => {
-    // Retry internally on the server to handle rate limits before returning to client
-    const {output} = await retryWithBackoff(() => explainRiskImplicationsPrompt(input));
+    // Retry with backoff AND API key rotation
+    const { output } = await retryWithBackoff(
+      async (index) => explainRiskImplicationsPrompts[index](input),
+      3,
+      2000,
+      allAis.length
+    );
+
     if (!output) {
       throw new Error('Failed to generate risk implications: The LLM returned an empty response.');
     }

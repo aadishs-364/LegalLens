@@ -8,7 +8,7 @@
  * - IdentifyContractRisksOutput - The return type for the identifyContractRisks function.
  */
 
-import { ai } from '@/ai/genkit';
+import { ai, allAis, defineMultiPrompt } from '@/ai/genkit';
 import { z } from 'genkit';
 import { retryWithBackoff } from '@/lib/utils';
 
@@ -72,7 +72,7 @@ export async function identifyContractRisks(
   return identifyContractRisksFlow(input);
 }
 
-const identifyContractRisksPrompt = ai.definePrompt({
+const identifyContractRisksPrompts = defineMultiPrompt({
   name: 'identifyContractRisksPrompt',
   input: { schema: IdentifyContractRisksInputSchema },
   output: { schema: IdentifyContractRisksOutputSchema },
@@ -108,8 +108,14 @@ const identifyContractRisksFlow = ai.defineFlow(
     outputSchema: IdentifyContractRisksOutputSchema,
   },
   async (input) => {
-    // Retry internally on the server to handle rate limits before returning to client
-    const { output } = await retryWithBackoff(() => identifyContractRisksPrompt(input));
+    // Retry with backoff AND API key rotation
+    const { output } = await retryWithBackoff(
+      async (index) => identifyContractRisksPrompts[index](input),
+      3,
+      2000,
+      allAis.length
+    );
+    
     if (!output) {
       throw new Error('Failed to get a valid response from the LLM.');
     }
