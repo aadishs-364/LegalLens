@@ -11,11 +11,18 @@ import { identifyContractRisks, type IdentifyContractRisksOutput } from "@/ai/fl
 import { toast } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils";
 
+interface HistoryItem {
+  fullText: string;
+  displaySnippet: string;
+  verdict: string;
+  timestamp: number;
+}
+
 export default function LegalLensPage() {
   const [inputText, setInputText] = useState('');
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [results, setResults] = useState<IdentifyContractRisksOutput | null>(null);
-  const [history, setHistory] = useState<{ text: string, verdict: string, timestamp: number }[]>([]);
+  const [history, setHistory] = useState<HistoryItem[]>([]);
 
   // Hydration safety for localStorage
   useEffect(() => {
@@ -52,12 +59,13 @@ export default function LegalLensPage() {
         setResults(null);
       } else {
         setResults(data);
-        const newEntry = {
-          text: inputText.substring(0, 50) + '...',
+        const newEntry: HistoryItem = {
+          fullText: inputText,
+          displaySnippet: inputText.substring(0, 50) + '...',
           verdict: data.summary.verdict,
           timestamp: Date.now()
         };
-        const updatedHistory = [newEntry, ...history.slice(0, 9)];
+        const updatedHistory = [newEntry, ...history.filter(h => h.fullText !== inputText).slice(0, 9)];
         setHistory(updatedHistory);
         localStorage.setItem('legallens_history', JSON.stringify(updatedHistory));
       }
@@ -81,6 +89,15 @@ export default function LegalLensPage() {
   const handleLoadSample = () => {
     setInputText(SAMPLE_CLAUSE);
     setResults(null);
+  };
+
+  const handleHistoryClick = (item: HistoryItem) => {
+    setInputText(item.fullText);
+    setResults(null);
+    toast({
+      title: "History Restored",
+      description: "Previous contract text has been loaded.",
+    });
   };
 
   const charCount = inputText.length;
@@ -193,31 +210,36 @@ export default function LegalLensPage() {
               </div>
             </Card>
             
-            {/* History teaser */}
+            {/* History Section */}
             {history.length > 0 && (
-              <div className="hidden lg:block space-y-4 pt-4 border-t border-border/30">
+              <div className="space-y-4 pt-4 border-t border-border/30">
                 <h3 className="text-xs font-bold uppercase tracking-widest text-muted-foreground flex items-center gap-2">
                   <Clock className="h-4 w-4" />
-                  Recent Analyses
+                  Recent Analyses (Click to restore full text)
                 </h3>
-                <div className="flex flex-wrap gap-2">
+                <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-3 gap-3">
                   {history.map((item, i) => (
-                    <div 
+                    <Card 
                       key={i} 
-                      className="px-3 py-2 rounded-lg bg-secondary/30 border border-border/50 text-[10px] font-medium cursor-pointer hover:bg-secondary/50 transition-colors"
-                      onClick={() => setInputText(item.text)}
+                      className="p-3 bg-secondary/30 border border-border/50 cursor-pointer hover:bg-secondary/50 transition-all hover:scale-[1.02] group/item"
+                      onClick={() => handleHistoryClick(item)}
                     >
-                      <div className="flex items-center gap-2 mb-1">
-                         <span className={cn(
-                           "w-1.5 h-1.5 rounded-full",
-                           item.verdict === 'Low' ? 'bg-emerald-500' : 
-                           item.verdict === 'Medium' ? 'bg-yellow-500' :
-                           'bg-red-500'
-                         )} />
-                         {item.verdict}
+                      <div className="flex items-center justify-between mb-2">
+                         <div className="flex items-center gap-1.5">
+                            <span className={cn(
+                              "w-2 h-2 rounded-full",
+                              item.verdict === 'Low' ? 'bg-emerald-500' : 
+                              item.verdict === 'Medium' ? 'bg-yellow-500' :
+                              'bg-red-500'
+                            )} />
+                            <span className="text-[10px] font-bold uppercase tracking-tight">{item.verdict}</span>
+                         </div>
+                         <span className="text-[8px] text-muted-foreground">{new Date(item.timestamp).toLocaleDateString()}</span>
                       </div>
-                      <span className="text-muted-foreground truncate block max-w-[120px]">{item.text}</span>
-                    </div>
+                      <p className="text-[10px] text-muted-foreground line-clamp-2 leading-tight group-hover/item:text-foreground transition-colors">
+                        {item.displaySnippet}
+                      </p>
+                    </Card>
                   ))}
                 </div>
               </div>
@@ -242,7 +264,7 @@ export default function LegalLensPage() {
             ) : (
               <div className="flex-1 flex flex-col items-center justify-center space-y-6 rounded-2xl border border-dashed border-border/50 bg-secondary/10 p-12 text-center">
                 <div className="h-20 w-20 rounded-full bg-secondary/30 flex items-center justify-center">
-                   <FileText className="h-10 w-10 text-muted-foreground" />
+                   <ShieldCheck className="h-10 w-10 text-muted-foreground opacity-50" />
                 </div>
                 <div>
                   <h3 className="text-xl font-bold text-foreground">No analysis yet</h3>
@@ -302,26 +324,4 @@ export default function LegalLensPage() {
       </footer>
     </div>
   );
-}
-
-function FileText(props: any) {
-  return (
-    <svg
-      {...props}
-      xmlns="http://www.w3.org/2000/svg"
-      width="24"
-      height="24"
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="2"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-    >
-      <path d="M15 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7Z" />
-      <path d="M14 2v4a2 2 0 0 0 2 2h4" />
-      <path d="M9 18h6" />
-      <path d="M9 14h6" />
-    </svg>
-  )
 }

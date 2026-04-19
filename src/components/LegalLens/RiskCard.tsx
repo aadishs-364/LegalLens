@@ -10,10 +10,8 @@ interface RiskCardProps {
   risk: {
     riskFactor: string;
     category: string;
-    severity: 'Low' | 'Medium' | 'High' | 'Critical';
-    originalFragment: string;
     explanation: string;
-    lawyerTip: string;
+    severity: 'Low' | 'Medium' | 'High' | 'Critical';
   };
 }
 
@@ -56,24 +54,9 @@ export function RiskCard({ risk }: RiskCardProps) {
       </CardHeader>
       <CardContent className="space-y-4">
         <div>
-          <h4 className="mb-1 text-sm font-semibold text-foreground">Why this matters:</h4>
+          <h4 className="mb-1 text-sm font-semibold text-foreground">Analysis:</h4>
           <p className="text-sm leading-relaxed text-muted-foreground">
             {risk.explanation}
-          </p>
-        </div>
-
-        <div className="rounded-md bg-background/50 p-3 italic">
-          <h4 className="mb-1 text-xs font-bold uppercase text-muted-foreground">Original Text:</h4>
-          <p className="text-sm text-foreground/80">"{risk.originalFragment}"</p>
-        </div>
-
-        <div className="rounded-md border border-primary/20 bg-primary/5 p-3">
-          <h4 className="mb-1 text-sm font-semibold text-primary flex items-center gap-2">
-            <Info className="h-4 w-4" />
-            Lawyer Tip:
-          </h4>
-          <p className="text-sm italic text-foreground/90">
-            "{risk.lawyerTip}"
           </p>
         </div>
       </CardContent>

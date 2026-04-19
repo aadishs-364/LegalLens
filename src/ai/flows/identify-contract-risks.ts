@@ -28,21 +28,14 @@ const RiskSchema = z.object({
       'Operational',
       'Privacy',
       'Non-Compete',
-      'Other',
     ])
     .describe('The category of the risk.'),
-  severity: z
-    .enum(['Low', 'Medium', 'High', 'Critical'])
-    .describe('The severity level of the risk.'),
-  originalFragment: z
-    .string()
-    .describe('Exact quoted text from the input that triggered this risk.'),
   explanation: z
     .string()
     .describe('Explanation of why this risk matters in plain English.'),
-  lawyerTip: z
-    .string()
-    .describe('A specific question the user should ask a lawyer regarding this risk.'),
+  severity: z
+    .enum(['Low', 'Medium', 'High', 'Critical'])
+    .describe('The severity level of the risk.'),
 });
 
 const IdentifyContractRisksOutputSchema = z.object({
@@ -74,19 +67,23 @@ const identifyContractRisksPrompt = ai.definePrompt({
   name: 'identifyContractRisksPrompt',
   input: { schema: IdentifyContractRisksInputSchema },
   output: { schema: IdentifyContractRisksOutputSchema },
-  prompt: `You are ClearClause, an expert legal translator with 20 years of experience making contracts understandable to everyday people. Your ONLY job is to analyze contract text and return a structured JSON response.
+  prompt: `You are ClearClause, an expert legal translator. Your task is to analyze contract text and return a structured JSON response.
 
-You MUST respond with ONLY valid JSON matching the exact schema provided in your instructions — no markdown, no preamble, no explanation outside the JSON.
-
-If isValidClause is false, return empty arrays and explain in plainEnglish that the input doesn't appear to be a contract clause.
+If the user provides a multi-clause contract, retain paragraph breaks or use bullet points in the 'plainEnglish' output to make it easy to read.
 
 Instructions:
-1. Translate the entire provided 'contractClause' into clear, concise, easy-to-understand plain English. If the input contains multiple clauses, paragraphs, or distinct sections, preserve that structure in your translation using paragraph breaks or bullet points to ensure high readability.
-2. Identify and highlight all potential legal risks within the 'contractClause'. Categorize each risk into one of: Financial, Legal Liability, Operational, Privacy, Non-Compete. If a risk doesn't fit these, use 'Other'.
-3. For each identified risk, provide a 'riskFactor' (concise title), categorize it, assign a 'severity' (Low, Medium, High, Critical), extract the 'exact original fragment' from the input that triggered the risk, 'explain' why it matters in plain English, and suggest a 'lawyerTip' which is a specific question the user should ask a lawyer.
-4. Provide a one-sentence overall risk 'verdict' for the entire clause.
-5. If the input does not appear to be a contract clause, set 'isValidClause' to false, provide a suitable explanation in 'plainEnglish', and return an empty array for 'risks'.
-6. Do NOT provide legal advice. Be neutral, factual, and slightly cautious.
+1. Translate the 'contractClause' into clear plain English. Preserve structural formatting (paragraphs/bullets).
+2. Identify risks and categorize them ONLY as: Financial, Legal Liability, Operational, Privacy, or Non-Compete.
+3. For each risk, provide:
+   "risks": [ 
+     { 
+       "category": "Financial | Legal Liability | Operational | Privacy | Non-Compete",
+       "riskFactor": "string", 
+       "explanation": "string", 
+       "severity": "Low|Medium|High|Critical" 
+     } 
+   ]
+4. If isValidClause is false, explain why in plainEnglish and return an empty risks array.
 
 Contract Clause: {{{contractClause}}}`,
 });
