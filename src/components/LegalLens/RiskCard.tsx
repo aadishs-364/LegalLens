@@ -1,6 +1,7 @@
+
 "use client"
 
-import React, { useState, useEffect } from 'react';
+import React from 'react';
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -17,20 +18,13 @@ interface RiskCardProps {
     originalFragment?: string;
   };
   isExplaining: boolean;
+  isExpanded: boolean;
   details: ExplainRiskImplicationsOutput | null;
   onDeepDive: () => void;
+  onToggleExpand: () => void;
 }
 
-export function RiskCard({ risk, isExplaining, details, onDeepDive }: RiskCardProps) {
-  const [isExpanded, setIsExpanded] = useState(false);
-
-  // Auto-expand when details arrive
-  useEffect(() => {
-    if (details) {
-      setIsExpanded(true);
-    }
-  }, [details]);
-
+export function RiskCard({ risk, isExplaining, isExpanded, details, onDeepDive, onToggleExpand }: RiskCardProps) {
   const getSeverityStyles = (severity: string) => {
     switch (severity) {
       case 'Critical': return "border-red-500/50 bg-red-500/10 text-red-400";
@@ -51,11 +45,11 @@ export function RiskCard({ risk, isExplaining, details, onDeepDive }: RiskCardPr
     }
   };
 
-  const handleToggle = () => {
+  const handleButtonClick = () => {
     if (!details && !isExplaining) {
       onDeepDive();
     } else {
-      setIsExpanded(!isExpanded);
+      onToggleExpand();
     }
   };
 
@@ -86,51 +80,66 @@ export function RiskCard({ risk, isExplaining, details, onDeepDive }: RiskCardPr
         <Button 
           variant="ghost" 
           size="sm" 
-          className="w-full justify-between h-8 text-xs font-bold border border-border/50 bg-secondary/20"
-          onClick={handleToggle}
-          disabled={isExplaining}
+          className={cn(
+            "w-full justify-between h-8 text-xs font-bold border border-border/50",
+            isExplaining ? "bg-primary/10 border-primary/30" : "bg-secondary/20"
+          )}
+          onClick={handleButtonClick}
+          disabled={isExplaining && !details}
         >
           {isExplaining ? (
-            <span className="flex items-center gap-2"><Loader2 className="h-3 w-3 animate-spin" /> Fetching Deep Dive...</span>
+            <span className="flex items-center gap-2">
+              <Loader2 className="h-3 w-3 animate-spin" /> 
+              AI is analyzing implications...
+            </span>
           ) : (
             <>
-              {isExpanded && details ? "Hide Deep Dive" : "Show Deep Dive & Alternatives"}
-              {isExpanded && details ? <ChevronUp className="h-3 w-3" /> : <ChevronDown className="h-3 w-3" />}
+              {details ? (isExpanded ? "Hide Deep Dive" : "Show Deep Dive & Alternatives") : "Get Deep Dive Analysis"}
+              {isExpanded ? <ChevronUp className="h-3 w-3" /> : <ChevronDown className="h-3 w-3" />}
             </>
           )}
         </Button>
 
-        {isExpanded && details && (
+        {isExpanded && (
           <div className="space-y-4 pt-4 border-t border-border/30 animate-in fade-in slide-in-from-top-2">
-            <div className="space-y-2">
-               <div className="flex items-center gap-2 text-primary">
-                 <FileWarning className="h-4 w-4" />
-                 <h4 className="text-xs font-bold uppercase">Why it matters</h4>
-               </div>
-               <p className="text-sm text-foreground/90 leading-relaxed bg-background/30 p-3 rounded-lg border border-border/20">
-                 {details.detailedExplanation}
-               </p>
-            </div>
+            {isExplaining && !details ? (
+              <div className="flex flex-col items-center justify-center py-8 space-y-3 opacity-60">
+                <Loader2 className="h-6 w-6 animate-spin text-primary" />
+                <p className="text-[10px] uppercase tracking-widest font-bold">Connecting to GenAI...</p>
+              </div>
+            ) : details ? (
+              <>
+                <div className="space-y-2">
+                   <div className="flex items-center gap-2 text-primary">
+                     <FileWarning className="h-4 w-4" />
+                     <h4 className="text-xs font-bold uppercase">Why it matters</h4>
+                   </div>
+                   <p className="text-sm text-foreground/90 leading-relaxed bg-background/30 p-3 rounded-lg border border-border/20">
+                     {details.detailedExplanation}
+                   </p>
+                </div>
 
-            <div className="space-y-2">
-               <div className="flex items-center gap-2 text-accent">
-                 <Lightbulb className="h-4 w-4" />
-                 <h4 className="text-xs font-bold uppercase">Fairer Alternative</h4>
-               </div>
-               <p className="text-sm italic text-muted-foreground bg-accent/5 p-3 rounded-lg border border-accent/20">
-                 "{details.fairerAlternative || "No specific wording suggested, consult your legal team."}"
-               </p>
-            </div>
+                <div className="space-y-2">
+                   <div className="flex items-center gap-2 text-accent">
+                     <Lightbulb className="h-4 w-4" />
+                     <h4 className="text-xs font-bold uppercase">Fairer Alternative</h4>
+                   </div>
+                   <p className="text-sm italic text-muted-foreground bg-accent/5 p-3 rounded-lg border border-accent/20">
+                     "{details.fairerAlternative || "No specific wording suggested, consult your legal team."}"
+                   </p>
+                </div>
 
-            <div className="space-y-2">
-               <div className="flex items-center gap-2 text-orange-400">
-                 <MessageSquare className="h-4 w-4" />
-                 <h4 className="text-xs font-bold uppercase">Ask your lawyer:</h4>
-               </div>
-               <p className="text-sm font-medium text-foreground p-3 rounded-lg bg-orange-500/5 border border-orange-500/20">
-                 {details.lawyerTip}
-               </p>
-            </div>
+                <div className="space-y-2">
+                   <div className="flex items-center gap-2 text-orange-400">
+                     <MessageSquare className="h-4 w-4" />
+                     <h4 className="text-xs font-bold uppercase">Ask your lawyer:</h4>
+                   </div>
+                   <p className="text-sm font-medium text-foreground p-3 rounded-lg bg-orange-500/5 border border-orange-500/20">
+                     {details.lawyerTip}
+                   </p>
+                </div>
+              </>
+            ) : null}
           </div>
         )}
       </CardContent>
