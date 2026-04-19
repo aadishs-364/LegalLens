@@ -25,6 +25,7 @@ const RiskSchema = z.object({
       'Operational',
       'Privacy',
       'Non-Compete',
+      'Scope',
     ])
     .describe('The category of the risk.'),
   explanation: z
@@ -73,20 +74,25 @@ const identifyContractRisksPrompts = defineMultiPrompt({
   output: { schema: IdentifyContractRisksOutputSchema },
   prompt: `You are ClearClause, an expert legal translator. Your task is to analyze contract text and return a structured JSON response.
 
+CRITICAL INSTRUCTIONS FOR MULTI-RISK DETECTION:
+1. Analyze the text paragraph by paragraph.
+2. A single paragraph or clause may contain MULTIPLE distinct risks. You MUST identify and list each one separately.
+3. Pay close attention to 'Scope' risks: these are clauses that are vague, overly broad, or leave obligations open-ended (e.g., "any and all tasks assigned from time to time").
+
 CRITICAL INSTRUCTIONS FOR 'plainEnglish':
 1. Translate the 'contractClause' into clear plain English.
 2. YOU MUST MIRROR THE EXACT STRUCTURE of the original text. 
 3. Use double newlines (\\n\\n) to separate distinct paragraphs, clauses, or numbered points. 
-4. DO NOT group multiple distinct legal clauses into a single giant paragraph.
-
-Instructions for Glossary:
-1. Identify specific, complex legal terms and distinct legal OBLIGATIONS (e.g., "Indemnify", "Force Majeure").
-2. PROVIDE A CLEAR, ACTION-ORIENTED MEANING FOR EACH.
-3. If a block of text contains multiple distinct obligations joined together (e.g., "Indemnify, Defend, and Hold Harmless"), you MUST break them down as separate items in the glossary.
 
 Instructions for Risks:
-1. Identify risks and categorize them ONLY as: Financial, Legal Liability, Operational, Privacy, or Non-Compete.
+1. Identify risks and categorize them ONLY as: Financial, Legal Liability, Operational, Privacy, Non-Compete, or Scope.
 2. Use 'riskFactor' for the title and include 'originalFragment'.
+3. 'Scope' risks specifically target vagueness or excessive breadth of responsibility.
+
+Instructions for Glossary:
+1. Identify specific, complex legal terms and distinct legal OBLIGATIONS.
+2. PROVIDE A CLEAR, ACTION-ORIENTED MEANING FOR EACH.
+3. Break down joined obligations (e.g., "Indemnify, Defend, and Hold Harmless") into separate items.
 
 Contract Clause: {{{contractClause}}}`,
 });
@@ -98,7 +104,6 @@ const identifyContractRisksFlow = ai.defineFlow(
     outputSchema: IdentifyContractRisksOutputSchema,
   },
   async (input) => {
-    // Reduced retries and delay to ensure we stay under the 30s Server Action timeout
     const { output } = await retryWithBackoff(
       async (index) => identifyContractRisksPrompts[index](input),
       3,
