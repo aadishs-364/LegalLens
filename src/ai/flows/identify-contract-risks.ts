@@ -20,19 +20,14 @@ const IdentifyContractRisksInputSchema = z.object({
 export type IdentifyContractRisksInput = z.infer<typeof IdentifyContractRisksInputSchema>;
 
 const RiskSchema = z.object({
-  riskTitle: z.string().describe('A concise title for the identified risk.'),
+  riskFactor: z.string().describe('A concise title for the identified risk.'),
   category: z
     .enum([
-      'Indemnification',
-      'Limitation of Liability',
-      'Auto-Renewal',
-      'Unilateral Modification',
-      'Jurisdiction/Governing Law',
-      'IP Assignment',
-      'Non-Compete/Non-Solicitation',
-      'Data Privacy',
-      'Termination Without Cause',
-      'Liquidated Damages',
+      'Financial',
+      'Legal Liability',
+      'Operational',
+      'Privacy',
+      'Non-Compete',
       'Other',
     ])
     .describe('The category of the risk.'),
@@ -87,8 +82,8 @@ If isValidClause is false, return empty arrays and explain in plainEnglish that 
 
 Instructions:
 1. Translate the entire provided 'contractClause' into clear, concise, easy-to-understand plain English. If the input contains multiple clauses, paragraphs, or distinct sections, preserve that structure in your translation using paragraph breaks or bullet points to ensure high readability.
-2. Identify and highlight all potential legal risks within the 'contractClause'. The specific risk categories to detect are: Indemnification, Limitation of Liability, Auto-Renewal, Unilateral Modification, Jurisdiction/Governing Law, IP Assignment, Non-Compete/Non-Solicitation, Data Privacy, Termination Without Cause, Liquidated Damages. If a risk doesn't fit these, use 'Other'.
-3. For each identified risk, provide a 'riskTitle', categorize it, assign a 'severity' (Low, Medium, High, Critical), extract the 'exact original fragment' from the input that triggered the risk, 'explain' why it matters in plain English, and suggest a 'lawyerTip' which is a specific question the user should ask a lawyer.
+2. Identify and highlight all potential legal risks within the 'contractClause'. Categorize each risk into one of: Financial, Legal Liability, Operational, Privacy, Non-Compete. If a risk doesn't fit these, use 'Other'.
+3. For each identified risk, provide a 'riskFactor' (concise title), categorize it, assign a 'severity' (Low, Medium, High, Critical), extract the 'exact original fragment' from the input that triggered the risk, 'explain' why it matters in plain English, and suggest a 'lawyerTip' which is a specific question the user should ask a lawyer.
 4. Provide a one-sentence overall risk 'verdict' for the entire clause.
 5. If the input does not appear to be a contract clause, set 'isValidClause' to false, provide a suitable explanation in 'plainEnglish', and return an empty array for 'risks'.
 6. Do NOT provide legal advice. Be neutral, factual, and slightly cautious.

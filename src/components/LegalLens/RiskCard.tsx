@@ -8,7 +8,7 @@ import { cn } from "@/lib/utils";
 
 interface RiskCardProps {
   risk: {
-    riskTitle: string;
+    riskFactor: string;
     category: string;
     severity: 'Low' | 'Medium' | 'High' | 'Critical';
     originalFragment: string;
@@ -44,7 +44,7 @@ export function RiskCard({ risk }: RiskCardProps) {
         <div className="flex items-center justify-between gap-4">
           <div className="flex items-center gap-2">
             {getSeverityIcon(risk.severity)}
-            <CardTitle className="text-lg font-bold">{risk.riskTitle}</CardTitle>
+            <CardTitle className="text-lg font-bold">{risk.riskFactor}</CardTitle>
           </div>
           <Badge variant="outline" className={cn("font-bold uppercase tracking-wider", getSeverityStyles(risk.severity))}>
             {risk.severity}
