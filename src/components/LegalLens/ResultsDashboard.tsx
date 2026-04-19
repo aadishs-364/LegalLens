@@ -8,7 +8,7 @@ import { RiskCard } from "./RiskCard";
 import { RiskMeter } from "./RiskMeter";
 import { Button } from "@/components/ui/button";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Copy, Download, FileText, Activity, CheckCircle2, Book, Sparkles } from "lucide-react";
+import { Copy, Download, FileText, Activity, CheckCircle2, Book, Sparkles, Wand2 } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
 import type { IdentifyContractRisksOutput } from "@/ai/flows/identify-contract-risks";
 import type { ExplainRiskImplicationsOutput } from "@/ai/flows/explain-risk-implications";
@@ -19,16 +19,15 @@ interface ResultsDashboardProps {
 }
 
 export function ResultsDashboard({ data }: ResultsDashboardProps) {
-  // Store deep dive results, loading states, and expansion states at the dashboard level
   const [riskDetails, setRiskDetails] = useState<Record<number, ExplainRiskImplicationsOutput>>({});
   const [loadingRisks, setLoadingRisks] = useState<Record<number, boolean>>({});
   const [expandedRisks, setExpandedRisks] = useState<Record<number, boolean>>({});
 
   const handleCopy = () => {
-    let text = `LegalLens Analysis Report\n`;
-    text += `==========================\n\n`;
+    let text = `LegalLens AI Analysis Report\n`;
+    text += `===============================\n\n`;
     
-    text += `OVERALL VERDICT: ${data.summary.verdict}\n`;
+    text += `OVERALL VERDICT: ${data.summary.verdict.toUpperCase()}\n`;
     text += `SUMMARY: ${data.summary.oneSentence}\n\n`;
     
     text += `PLAIN ENGLISH TRANSLATION\n`;
@@ -40,15 +39,17 @@ export function ResultsDashboard({ data }: ResultsDashboardProps) {
     data.risks.forEach((risk, i) => {
       text += `[${risk.severity}] ${risk.riskFactor}\n`;
       text += `Category: ${risk.category}\n`;
-      text += `Short Explanation: ${risk.explanation}\n`;
+      text += `Overview: ${risk.explanation}\n`;
       
       const details = riskDetails[i];
       if (details) {
         text += `Deep Dive Analysis:\n`;
-        text += `  - Why it matters: ${details.detailedExplanation}\n`;
-        text += `  - Real-world impact: ${details.realWorldImplications}\n`;
+        text += `  - Impact: ${details.detailedExplanation}\n`;
+        text += `  - Consequence: ${details.realWorldImplications}\n`;
         text += `  - Lawyer Tip: ${details.lawyerTip}\n`;
-        text += `  - Suggested Fairer Alternative: ${details.fairerAlternative || 'Not provided'}\n`;
+        if (details.fairerAlternative) {
+          text += `  - Fairer Alternative: ${details.fairerAlternative}\n`;
+        }
       }
       text += `\n`;
     });
@@ -66,8 +67,8 @@ export function ResultsDashboard({ data }: ResultsDashboardProps) {
 
     navigator.clipboard.writeText(text);
     toast({
-      title: "Full Report Copied",
-      description: "Translation, risks (with deep dives), and glossary are in your clipboard.",
+      title: "Comprehensive Report Copied",
+      description: "Full translation, glossary, and all generated deep dives are now in your clipboard.",
     });
   };
 
@@ -76,7 +77,6 @@ export function ResultsDashboard({ data }: ResultsDashboardProps) {
   };
 
   const handleDeepDive = async (index: number) => {
-    // If already loading or details exist, just toggle expansion
     if (loadingRisks[index]) return;
     
     if (riskDetails[index]) {
@@ -84,7 +84,6 @@ export function ResultsDashboard({ data }: ResultsDashboardProps) {
       return;
     }
     
-    // Set loading state and expand immediately to show the "fetching" UI
     setLoadingRisks(prev => ({ ...prev, [index]: true }));
     setExpandedRisks(prev => ({ ...prev, [index]: true }));
 
@@ -102,12 +101,34 @@ export function ResultsDashboard({ data }: ResultsDashboardProps) {
       toast({
         variant: "destructive",
         title: "Deep Dive Failed",
-        description: "Could not fetch detailed implications for this risk.",
+        description: `Could not fetch details for: ${data.risks[index].riskFactor}`,
       });
       setExpandedRisks(prev => ({ ...prev, [index]: false }));
     } finally {
       setLoadingRisks(prev => ({ ...prev, [index]: false }));
     }
+  };
+
+  const handleDeepDiveAll = async () => {
+    const indicesToFetch = data.risks
+      .map((_, i) => i)
+      .filter(i => !riskDetails[i] && !loadingRisks[i]);
+
+    if (indicesToFetch.length === 0) {
+      toast({
+        title: "All Risks Analyzed",
+        description: "All identified risks have already been processed or are currently loading.",
+      });
+      return;
+    }
+
+    toast({
+      title: "Batch Analysis Started",
+      description: `Analyzing ${indicesToFetch.length} risks in the background...`,
+    });
+
+    // Fire all requests in parallel
+    indicesToFetch.forEach(index => handleDeepDive(index));
   };
 
   const paragraphs = data.plainEnglish.split(/\n\n+/).filter(p => p.trim().length > 0);
@@ -191,6 +212,20 @@ export function ResultsDashboard({ data }: ResultsDashboardProps) {
 
           <TabsContent value="risks" className="m-0 h-full">
             <ScrollArea className="h-full p-6">
+              <div className="flex items-center justify-between mb-4">
+                <h3 className="text-xs font-bold uppercase tracking-widest text-muted-foreground">Detailed Risk Assessment</h3>
+                {data.risks.length > 0 && (
+                  <Button 
+                    variant="ghost" 
+                    size="sm" 
+                    className="h-8 text-[10px] font-bold uppercase tracking-tighter text-accent hover:text-accent/80 hover:bg-accent/10 gap-1.5"
+                    onClick={handleDeepDiveAll}
+                  >
+                    <Wand2 className="h-3.5 w-3.5" />
+                    Deep Dive All
+                  </Button>
+                )}
+              </div>
               {data.risks.length > 0 ? (
                 <div className="space-y-4">
                   {data.risks.map((risk, idx) => (

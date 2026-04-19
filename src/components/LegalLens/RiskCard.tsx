@@ -5,7 +5,7 @@ import React from 'react';
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { AlertCircle, ShieldAlert, Info, Scale, ChevronDown, ChevronUp, Loader2, MessageSquare, Lightbulb, FileWarning } from "lucide-react";
+import { AlertCircle, ShieldAlert, Info, Scale, ChevronDown, ChevronUp, Loader2, MessageSquare, Lightbulb, FileWarning, Sparkles } from "lucide-react";
 import { cn } from "@/lib/utils";
 import type { ExplainRiskImplicationsOutput } from "@/ai/flows/explain-risk-implications";
 
@@ -81,8 +81,8 @@ export function RiskCard({ risk, isExplaining, isExpanded, details, onDeepDive, 
           variant="ghost" 
           size="sm" 
           className={cn(
-            "w-full justify-between h-8 text-xs font-bold border border-border/50",
-            isExplaining ? "bg-primary/10 border-primary/30" : "bg-secondary/20"
+            "w-full justify-between h-8 text-xs font-bold border border-border/50 transition-all",
+            isExplaining ? "bg-primary/10 border-primary/30 text-primary" : details ? "bg-accent/10 border-accent/30 text-accent" : "bg-secondary/20"
           )}
           onClick={handleButtonClick}
           disabled={isExplaining && !details}
@@ -90,11 +90,14 @@ export function RiskCard({ risk, isExplaining, isExpanded, details, onDeepDive, 
           {isExplaining ? (
             <span className="flex items-center gap-2">
               <Loader2 className="h-3 w-3 animate-spin" /> 
-              AI is analyzing implications...
+              Generating insights...
             </span>
           ) : (
             <>
-              {details ? (isExpanded ? "Hide Deep Dive" : "Show Deep Dive & Alternatives") : "Get Deep Dive Analysis"}
+              <span className="flex items-center gap-2">
+                {details ? <Sparkles className="h-3 w-3" /> : <Lightbulb className="h-3 w-3" />}
+                {details ? (isExpanded ? "Hide Detailed Analysis" : "Show Deep Dive & Alternatives") : "Get Deep Dive Analysis"}
+              </span>
               {isExpanded ? <ChevronUp className="h-3 w-3" /> : <ChevronDown className="h-3 w-3" />}
             </>
           )}
