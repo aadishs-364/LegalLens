@@ -100,11 +100,11 @@ const explainRiskImplicationsGenkitFlow = ai.defineFlow(
     outputSchema: ExplainRiskImplicationsOutputSchema,
   },
   async input => {
-    // Retry with backoff AND API key rotation
+    // Aggressive retry logic with rotation
     const { output } = await retryWithBackoff(
       async (index) => explainRiskImplicationsPrompts[index](input),
-      3,
-      2000,
+      5,
+      3000,
       allAis.length
     );
 

@@ -49,7 +49,7 @@ export default function LegalLensPage() {
 
     setIsAnalyzing(true);
     try {
-      // Added retry logic for the main analysis
+      // Added robust retry logic for the main analysis
       const data = await retryWithBackoff(() => identifyContractRisks({ contractClause: inputText }));
       
       if (!data.isValidClause) {
@@ -73,15 +73,23 @@ export default function LegalLensPage() {
         localStorage.setItem('legallens_history_v2', JSON.stringify(updatedHistory));
       }
     } catch (error: any) {
-      console.error(error);
-      const isRateLimit = error?.message?.includes('429') || error?.message?.includes('RESOURCE_EXHAUSTED');
-      toast({
-        variant: "destructive",
-        title: isRateLimit ? "Rate Limit Exceeded" : "Analysis Failed",
-        description: isRateLimit 
-          ? "The AI is currently busy. Please wait a moment and try again." 
-          : "An error occurred while communicating with the AI. Please try again.",
-      });
+      const errorMessage = String(error?.message || "").toUpperCase();
+      const isRateLimit = errorMessage.includes('429') || errorMessage.includes('RESOURCE_EXHAUSTED') || errorMessage.includes('LIMIT');
+      
+      if (isRateLimit) {
+        toast({
+          variant: "destructive",
+          title: "AI Busy (Rate Limit)",
+          description: "The AI free tier is currently overloaded. Please wait 30 seconds and try again, or add more API keys to your configuration.",
+        });
+      } else {
+        console.error("Analysis Error:", error);
+        toast({
+          variant: "destructive",
+          title: "Analysis Failed",
+          description: "An error occurred while communicating with the AI. Please try again.",
+        });
+      }
     } finally {
       setIsAnalyzing(false);
     }

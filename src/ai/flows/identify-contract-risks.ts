@@ -108,11 +108,11 @@ const identifyContractRisksFlow = ai.defineFlow(
     outputSchema: IdentifyContractRisksOutputSchema,
   },
   async (input) => {
-    // Retry with backoff AND API key rotation
+    // Aggressive retry logic with rotation
     const { output } = await retryWithBackoff(
       async (index) => identifyContractRisksPrompts[index](input),
-      3,
-      2000,
+      5,
+      3000,
       allAis.length
     );
     
