@@ -85,7 +85,7 @@ export default function LegalLensPage() {
         localStorage.setItem('legallens_history_v4', JSON.stringify(updatedHistory));
       }
     } catch (error: any) {
-      console.error("Unexpected Client Error:", error);
+      console.error("ANALYSIS_CRASH_DEBUG:", error);
       toast({
         variant: "destructive",
         title: "Unexpected Error",

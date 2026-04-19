@@ -3,7 +3,7 @@
  * @fileOverview A Genkit flow for identifying and categorizing legal risks in a contract clause.
  */
 
-import { ai, allAis, defineMultiPrompt } from '@/ai/genkit';
+import { getAi, getAiInstances, defineMultiPrompt } from '@/ai/genkit';
 import { z } from 'genkit';
 import { retryWithBackoff } from '@/lib/utils';
 
@@ -70,10 +70,16 @@ export async function identifyContractRisks(
   input: IdentifyContractRisksInput
 ): Promise<IdentifyContractRisksResult> {
   try {
+    console.log("[Server Action] Starting identifyContractRisks analysis with input length:", input.contractClause.length);
     const output = await identifyContractRisksFlow(input);
-    return { success: true, data: output };
+    console.log("[Server Action] Analysis completed successfully");
+    
+    // Ensure the output is a plain object
+    const serializedData = JSON.parse(JSON.stringify(output));
+    
+    return { success: true, data: serializedData };
   } catch (error: any) {
-    console.error("identifyContractRisks error:", error);
+    console.error("[Server Action Error] identifyContractRisks failed:", error);
     return { 
       success: false, 
       error: error.message || "An unexpected error occurred during analysis. Please try again later." 
@@ -85,7 +91,7 @@ const identifyContractRisksPrompts = defineMultiPrompt({
   name: 'identifyContractRisksPrompt',
   input: { schema: IdentifyContractRisksInputSchema },
   output: { schema: IdentifyContractRisksOutputSchema },
-  prompt: `You are ClearClause, an expert legal translator and risk analyst. Your task is to analyze contract text and return a structured JSON response.
+  prompt: ({ contractClause }: IdentifyContractRisksInput) => `You are ClearClause, an expert legal translator and risk analyst. Your task is to analyze contract text and return a structured JSON response.
 
 ### CRITICAL CATEGORIZATION RULES:
 1. **SCOPE vs. LIABILITY**: Categorize as 'Scope' if the risk is about vagueness or open-endedness.
@@ -94,25 +100,53 @@ const identifyContractRisksPrompts = defineMultiPrompt({
 4. **SEVERITY**: Mark 'Critical' for permanent rights transfer, no time limits, or irrevocable waivers.
 5. **GLOSSARY**: Breakdown compound obligations (e.g., "Indemnify, Defend, and Hold Harmless" -> 3 entries).
 
-Contract Clause: """{{{contractClause}}}"""`,
+Contract Clause: """${contractClause}"""`,
 });
 
-const identifyContractRisksFlow = ai.defineFlow(
+const identifyContractRisksFlow = getAi().defineFlow(
   {
     name: 'identifyContractRisksFlow',
     inputSchema: IdentifyContractRisksInputSchema,
     outputSchema: IdentifyContractRisksOutputSchema,
   },
-  async (input) => {
+  async (input: IdentifyContractRisksInput) => {
+    const instances = getAiInstances();
+    const instancesCount = instances.length;
+    const promptsCount = identifyContractRisksPrompts.length;
+    
+    console.log(`[Flow] Starting flow with ${instancesCount} instances and ${promptsCount} prompts`);
+
+    if (promptsCount === 0) {
+      throw new Error("No AI instances available for analysis. Please check your API keys.");
+    }
+
     const { output } = await retryWithBackoff(
-      async (index) => identifyContractRisksPrompts[index](input),
+      async (index) => {
+        // Ensure index is within bounds of prompts array
+        const safeIndex = index % promptsCount;
+        const promptFn = identifyContractRisksPrompts[safeIndex];
+        const instances = getAiInstances();
+        const modelRef = instances[safeIndex]?.model;
+        const modelName = typeof modelRef === 'string' ? modelRef : 'unknown';
+        
+        console.log(`[Flow] Attempting analysis with prompt index ${safeIndex} (Model: ${modelName})...`);
+        
+        if (typeof promptFn !== 'function') {
+          throw new Error(`AI prompt at index ${safeIndex} is not a function.`);
+        }
+        
+        const response = await promptFn(input);
+        console.log(`[Flow] Received response from prompt index ${safeIndex}`);
+        return response;
+      },
       5, 
       1000,
-      allAis.length
+      instancesCount
     );
     
     if (!output) {
-      throw new Error('No response from AI.');
+      console.error('[Flow] AI returned an empty response (output is null/undefined)');
+      throw new Error('AI returned an empty response.');
     }
     return output;
   }

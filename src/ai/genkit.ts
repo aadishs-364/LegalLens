@@ -1,83 +1,69 @@
-import { genkit, z } from 'genkit';
+import { genkit, z, Genkit } from 'genkit';
 import { googleAI } from '@genkit-ai/google-genai';
-import * as genkitOpenAI from 'genkitx-openai';
 
-const GOOGLE_MODEL = 'googleai/gemini-2.0-flash-lite';
-const OPENROUTER_MODEL = 'openai/google/gemini-2.0-flash-lite:free';
+// Google model - stable for analysis
+const GOOGLE_MODEL_NAME = 'googleai/gemini-2.0-flash';
 
-// Detect all available keys (5 Google + 1 OpenRouter)
-const googleKeys = Array.from(new Set([
-  process.env.GOOGLE_GENAI_API_KEY,
-  process.env.GOOGLE_GENAI_API_KEY_2,
-  process.env.GOOGLE_GENAI_API_KEY_3,
-  process.env.GOOGLE_GENAI_API_KEY_4,
-  process.env.GOOGLE_GENAI_API_KEY_5,
-  process.env.GEMINI_API_KEY,
-  process.env.GEMINI_API_KEY_2,
-  process.env.GEMINI_API_KEY_3,
-  process.env.GEMINI_API_KEY_4,
-  process.env.GEMINI_API_KEY_5,
-])).filter(Boolean).slice(0, 5) as string[];
-
-const openRouterKey = process.env.OpenRouter_API_KEY;
-
-if (typeof window === 'undefined') {
-  console.log(`[Genkit Init] Cycling 6-key pool. Detected ${googleKeys.length} Google key(s) and ${openRouterKey ? '1' : '0'} OpenRouter key.`);
-}
+let instancesCache: { instance: Genkit; model: string }[] | null = null;
 
 /**
- * Robustly resolve the openai plugin function from genkitx-openai
+ * Robustly initialize exactly 2 Gemini AI instances for cycling.
+ * This ensures quota limits are shared across two keys.
  */
-const getOpenAIPlugin = () => {
-  if (!genkitOpenAI) return null;
-  // Try various export patterns to handle different bundling environments
-  const plugin = (genkitOpenAI as any).openai || (genkitOpenAI as any).default?.openai || genkitOpenAI;
-  return typeof plugin === 'function' ? plugin : null;
-};
+export function getAiInstances(): { instance: Genkit; model: string }[] {
+  if (instancesCache) return instancesCache;
 
-const openAIPlugin = getOpenAIPlugin();
+  const instances: { instance: Genkit; model: string }[] = [];
 
-// Create internal map of instances with their specific model identifiers
-export const allAisWithModels = [
-  ...googleKeys.map(key => ({
-    instance: genkit({
-      plugins: [googleAI({ apiKey: key })],
-    }),
-    model: GOOGLE_MODEL
-  })),
-  ...(openRouterKey && openAIPlugin ? [{
-    instance: genkit({
-      plugins: [openAIPlugin({ 
-        apiKey: openRouterKey, 
-        config: { baseURL: 'https://openrouter.ai/api/v1' } 
-      })],
-    }),
-    model: OPENROUTER_MODEL
-  }] : [])
-];
+  // Define exactly 2 Gemini keys as requested for fresh credits
+  const googleKeys = [
+    process.env.GEMINI_API_KEY,
+    process.env.GEMINI_API_KEY_2,
+  ].filter(Boolean) as string[];
 
-// Fallback for initialization if no keys are found
-if (allAisWithModels.length === 0) {
-  allAisWithModels.push({
-    instance: genkit({ plugins: [googleAI()] }),
-    model: GOOGLE_MODEL
-  });
+  console.log(`[Genkit] Initializing with ${googleKeys.length} Gemini API keys...`);
+
+  for (const key of googleKeys) {
+    try {
+      const ai = genkit({ 
+        plugins: [googleAI({ apiKey: key })] 
+      });
+      instances.push({ instance: ai, model: GOOGLE_MODEL_NAME });
+    } catch (e) {
+      console.error('[Genkit] Failed to initialize Google AI instance:', e);
+    }
+  }
+
+  // Last resort fallback if no keys are found in environment
+  if (instances.length === 0) {
+    console.warn('[Genkit] No GEMINI_API_KEY found in environment. Using default instance.');
+    const defaultInstance = genkit({ plugins: [googleAI()] });
+    instances.push({ instance: defaultInstance, model: GOOGLE_MODEL_NAME });
+  }
+
+  instancesCache = instances;
+  return instances;
 }
 
-// Export for existing logic that uses allAis directly
-export const allAis = allAisWithModels.map(item => item.instance);
+export function getAi() {
+  return getAiInstances()[0].instance;
+}
 
-// Default instance
-export const ai = allAis[0];
-
-/**
- * Enhanced defineMultiPrompt that maps each Genkit instance to its correct provider model.
- */
 export function defineMultiPrompt<I extends z.ZodTypeAny, O extends z.ZodTypeAny>(options: any) {
-  return allAisWithModels.map((item) =>
+  const instances = getAiInstances();
+  return instances.map((item) =>
     item.instance.definePrompt({
       ...options,
       model: item.model,
     })
   );
+}
+
+if (typeof window === 'undefined') {
+  process.on('unhandledRejection', (reason, promise) => {
+    console.error('[Fatal] Unhandled Rejection at:', promise, 'reason:', reason);
+  });
+  process.on('uncaughtException', (err) => {
+    console.error('[Fatal] Uncaught Exception thrown:', err);
+  });
 }

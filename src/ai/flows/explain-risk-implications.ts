@@ -3,7 +3,7 @@
  * @fileOverview A Genkit flow to explain a specific contract risk in detail.
  */
 
-import { ai, allAis, defineMultiPrompt } from '@/ai/genkit';
+import { getAi, getAiInstances, defineMultiPrompt } from '@/ai/genkit';
 import { z } from 'genkit';
 import { retryWithBackoff } from '@/lib/utils';
 
@@ -31,10 +31,15 @@ export async function explainRiskImplications(
   input: ExplainRiskImplicationsInput
 ): Promise<ExplainRiskImplicationsResult> {
   try {
+    console.log("[Server Action] Starting explainRiskImplications analysis...");
     const output = await explainRiskImplicationsGenkitFlow(input);
-    return { success: true, data: output };
+    
+    // Ensure serializable output
+    const serializedData = JSON.parse(JSON.stringify(output));
+    
+    return { success: true, data: serializedData };
   } catch (error: any) {
-    console.error("explainRiskImplications error:", error);
+    console.error("[Server Action Error] explainRiskImplications failed:", error);
     return { 
       success: false, 
       error: error.message || "Failed to generate detailed risk insights." 
@@ -44,39 +49,47 @@ export async function explainRiskImplications(
 
 const explainRiskImplicationsPrompts = defineMultiPrompt({
   name: 'explainRiskImplicationsPrompt',
-  input: {schema: ExplainRiskImplicationsInputSchema},
-  output: {schema: ExplainRiskImplicationsOutputSchema},
-  prompt: `You are an expert legal analyst. Provide a detailed, clear, and actionable explanation for a specific contract risk.
+  input: { schema: ExplainRiskImplicationsInputSchema },
+  output: { schema: ExplainRiskImplicationsOutputSchema },
+  prompt: ({ riskTitle, originalFragment, severity }: ExplainRiskImplicationsInput) => `You are a senior legal strategist. A contract clause has been flagged for a risk: "${riskTitle}".
 
-Risk Title: {{{riskTitle}}}
-Original Fragment: """{{{originalFragment}}}"""
-Severity: {{{severity}}}
-{{#if existingExplanation}}Explanation Context: {{{existingExplanation}}}{{/if}}
+Fragment: """${originalFragment}"""
+Severity: ${severity}
 
-Generate:
-1. Plain English explanation of why it matters.
-2. Real-world consequences.
-3. A question for a lawyer.
-4. A fairer alternative wording.`,
+Explain the following in simple, non-legal terms:
+1. WHY this risk matters.
+2. What could happen in a WORST-CASE real-world scenario.
+3. A specific question to ask a lawyer about this.
+4. If applicable, how a FAIRER version of this clause might look.`,
 });
 
-const explainRiskImplicationsGenkitFlow = ai.defineFlow(
+const explainRiskImplicationsGenkitFlow = getAi().defineFlow(
   {
     name: 'explainRiskImplicationsFlow',
     inputSchema: ExplainRiskImplicationsInputSchema,
     outputSchema: ExplainRiskImplicationsOutputSchema,
   },
-  async input => {
-    const { output } = await retryWithBackoff(
-      async (index) => explainRiskImplicationsPrompts[index](input),
-      8,
-      2000,
-      allAis.length
-    );
+  async (input: ExplainRiskImplicationsInput) => {
+    const instances = getAiInstances();
+    const instancesCount = instances.length;
+    const promptsCount = explainRiskImplicationsPrompts.length;
 
-    if (!output) {
-      throw new Error('Failed to generate risk implications.');
+    if (promptsCount === 0) {
+      throw new Error("No AI instances available for risk explanation.");
     }
+
+    const { output } = await retryWithBackoff(
+      async (index) => {
+        const safeIndex = index % promptsCount;
+        const promptFn = explainRiskImplicationsPrompts[safeIndex];
+        return await promptFn(input);
+      },
+      3, 
+      1000,
+      instancesCount
+    );
+    
+    if (!output) throw new Error('AI returned an empty risk explanation.');
     return output;
   }
 );

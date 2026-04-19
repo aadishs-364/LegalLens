@@ -33,14 +33,15 @@ export async function retryWithBackoff<T>(
     try {
       return await fn(currentInstanceIndex);
     } catch (error: any) {
-      const errorMessage = String(error?.message || error?.statusText || "").toUpperCase();
+      const errorMessage = String(error?.message || error?.statusText || error || "").toUpperCase();
       const statusCode = error?.status || error?.code || (error?.response?.status);
       
       const isRateLimit = 
         statusCode === 429 ||
         errorMessage.includes('429') || 
         errorMessage.includes('RESOURCE_EXHAUSTED') || 
-        errorMessage.includes('LIMIT');
+        errorMessage.includes('LIMIT') ||
+        errorMessage.includes('QUOTA');
 
       if (isRateLimit) {
         triedInCurrentCycle.add(currentInstanceIndex);
@@ -48,6 +49,9 @@ export async function retryWithBackoff<T>(
         // OPTIMIZATION: If we have other keys we haven't tried yet in this cycle, 
         // switch and retry IMMEDIATELY without waiting.
         if (triedInCurrentCycle.size < availableInstancesCount) {
+          if (typeof window === 'undefined') {
+            console.log(`[Quota] Key ${currentInstanceIndex} exhausted. Rotating to next key...`);
+          }
           currentInstanceIndex = (currentInstanceIndex + 1) % availableInstancesCount;
           continue; 
         }
@@ -63,7 +67,7 @@ export async function retryWithBackoff<T>(
         const waitMs = retryAfterMs ?? (initialDelay * Math.pow(1.5, retries) + Math.random() * 200);
 
         if (typeof window === 'undefined') {
-          console.warn(`[Quota] All ${availableInstancesCount} keys exhausted. Waiting ${Math.round(waitMs)}ms...`);
+          console.warn(`[Quota] All ${availableInstancesCount} keys exhausted. Waiting ${Math.round(waitMs)}ms before retry ${retries + 1}/${maxRetries}...`);
         }
         
         await new Promise(resolve => setTimeout(resolve, waitMs));
@@ -77,6 +81,10 @@ export async function retryWithBackoff<T>(
         continue;
       }
       
+      // For non-rate-limit errors, log them and throw
+      if (typeof window === 'undefined') {
+        console.error(`[AI Error] Instance ${currentInstanceIndex} failed with non-quota error:`, error);
+      }
       throw error;
     }
   }
