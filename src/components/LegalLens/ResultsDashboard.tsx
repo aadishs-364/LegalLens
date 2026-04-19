@@ -1,32 +1,94 @@
 "use client"
 
-import React from 'react';
+import React, { useState } from 'react';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { RiskCard } from "./RiskCard";
 import { RiskMeter } from "./RiskMeter";
 import { Button } from "@/components/ui/button";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Copy, Download, FileText, AlertTriangle, Activity, CheckCircle2, Book } from "lucide-react";
+import { Copy, Download, FileText, Activity, CheckCircle2, Book } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
 import type { IdentifyContractRisksOutput } from "@/ai/flows/identify-contract-risks";
+import type { ExplainRiskImplicationsOutput } from "@/ai/flows/explain-risk-implications";
+import { explainRiskImplications } from "@/ai/flows/explain-risk-implications";
 
 interface ResultsDashboardProps {
   data: IdentifyContractRisksOutput;
 }
 
 export function ResultsDashboard({ data }: ResultsDashboardProps) {
+  // Store deep dive results and loading states at the dashboard level to persist through tab switches
+  const [riskDetails, setRiskDetails] = useState<Record<number, ExplainRiskImplicationsOutput>>({});
+  const [loadingRisks, setLoadingRisks] = useState<Record<number, boolean>>({});
+
   const handleCopy = () => {
-    const text = `LegalLens Analysis Summary\n\nVerdict: ${data.summary.verdict}\nSummary: ${data.summary.oneSentence}\n\nPlain English Translation:\n${data.plainEnglish}\n\nRisks Identified: ${data.risks.length}`;
+    let text = `LegalLens Analysis Summary\n`;
+    text += `============================\n\n`;
+    text += `Verdict: ${data.summary.verdict}\n`;
+    text += `Summary: ${data.summary.oneSentence}\n\n`;
+    
+    text += `Plain English Translation:\n`;
+    text += `--------------------------\n`;
+    text += `${data.plainEnglish}\n\n`;
+    
+    text += `Risks Identified (${data.risks.length}):\n`;
+    text += `--------------------------\n`;
+    data.risks.forEach((risk, i) => {
+      text += `${i + 1}. ${risk.riskFactor} (${risk.severity})\n`;
+      text += `   Category: ${risk.category}\n`;
+      text += `   Explanation: ${risk.explanation}\n`;
+      const details = riskDetails[i];
+      if (details) {
+        text += `   Deep Dive: ${details.detailedExplanation}\n`;
+        text += `   Fairer Alternative: ${details.fairerAlternative || 'N/A'}\n`;
+        text += `   Ask Lawyer: ${details.lawyerTip}\n`;
+      }
+      text += `\n`;
+    });
+
+    if (data.glossary && data.glossary.length > 0) {
+      text += `Glossary Terms:\n`;
+      text += `---------------\n`;
+      data.glossary.forEach(item => {
+        text += `- ${item.term}: ${item.meaning}\n`;
+      });
+    }
+
     navigator.clipboard.writeText(text);
     toast({
       title: "Copied to clipboard",
-      description: "Analysis summary has been copied.",
+      description: "Complete analysis, risks, and glossary have been copied.",
     });
   };
 
   const handlePrint = () => {
     window.print();
+  };
+
+  const handleDeepDive = async (index: number) => {
+    if (riskDetails[index]) return;
+    
+    setLoadingRisks(prev => ({ ...prev, [index]: true }));
+    try {
+      const risk = data.risks[index];
+      const result = await explainRiskImplications({
+        riskTitle: risk.riskFactor,
+        originalFragment: risk.originalFragment || risk.explanation,
+        severity: risk.severity,
+        existingExplanation: risk.explanation
+      });
+      setRiskDetails(prev => ({ ...prev, [index]: result }));
+    } catch (error) {
+      console.error(error);
+      toast({
+        variant: "destructive",
+        title: "Deep Dive Failed",
+        description: "Could not fetch detailed implications.",
+      });
+    } finally {
+      setLoadingRisks(prev => ({ ...prev, [index]: false }));
+    }
   };
 
   const paragraphs = data.plainEnglish.split(/\n\n+/).filter(p => p.trim().length > 0);
@@ -41,7 +103,7 @@ export function ResultsDashboard({ data }: ResultsDashboardProps) {
         <div className="flex gap-2">
           <Button variant="outline" size="sm" onClick={handleCopy} className="gap-2">
             <Copy className="h-4 w-4" />
-            Copy Summary
+            Copy All
           </Button>
           <Button variant="outline" size="sm" onClick={handlePrint} className="gap-2">
             <Download className="h-4 w-4" />
@@ -113,7 +175,13 @@ export function ResultsDashboard({ data }: ResultsDashboardProps) {
               {data.risks.length > 0 ? (
                 <div className="space-y-4">
                   {data.risks.map((risk, idx) => (
-                    <RiskCard key={idx} risk={risk} />
+                    <RiskCard 
+                      key={idx} 
+                      risk={risk} 
+                      isExplaining={loadingRisks[idx] || false}
+                      details={riskDetails[idx] || null}
+                      onDeepDive={() => handleDeepDive(idx)}
+                    />
                   ))}
                 </div>
               ) : (

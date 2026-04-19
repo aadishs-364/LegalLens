@@ -1,13 +1,12 @@
 "use client"
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { AlertCircle, ShieldAlert, Info, Scale, ChevronDown, ChevronUp, Loader2, MessageSquare, Lightbulb, FileWarning } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { explainRiskImplications, type ExplainRiskImplicationsOutput } from "@/ai/flows/explain-risk-implications";
-import { toast } from "@/hooks/use-toast";
+import type { ExplainRiskImplicationsOutput } from "@/ai/flows/explain-risk-implications";
 
 interface RiskCardProps {
   risk: {
@@ -17,12 +16,20 @@ interface RiskCardProps {
     severity: 'Low' | 'Medium' | 'High' | 'Critical';
     originalFragment?: string;
   };
+  isExplaining: boolean;
+  details: ExplainRiskImplicationsOutput | null;
+  onDeepDive: () => void;
 }
 
-export function RiskCard({ risk }: RiskCardProps) {
+export function RiskCard({ risk, isExplaining, details, onDeepDive }: RiskCardProps) {
   const [isExpanded, setIsExpanded] = useState(false);
-  const [isExplaining, setIsExplaining] = useState(false);
-  const [details, setDetails] = useState<ExplainRiskImplicationsOutput | null>(null);
+
+  // Auto-expand when details arrive
+  useEffect(() => {
+    if (details) {
+      setIsExpanded(true);
+    }
+  }, [details]);
 
   const getSeverityStyles = (severity: string) => {
     switch (severity) {
@@ -44,31 +51,11 @@ export function RiskCard({ risk }: RiskCardProps) {
     }
   };
 
-  const handleDeepDive = async () => {
-    if (details) {
+  const handleToggle = () => {
+    if (!details && !isExplaining) {
+      onDeepDive();
+    } else {
       setIsExpanded(!isExpanded);
-      return;
-    }
-
-    setIsExplaining(true);
-    try {
-      const result = await explainRiskImplications({
-        riskTitle: risk.riskFactor,
-        originalFragment: risk.originalFragment || risk.explanation,
-        severity: risk.severity,
-        existingExplanation: risk.explanation
-      });
-      setDetails(result);
-      setIsExpanded(true);
-    } catch (error) {
-      console.error(error);
-      toast({
-        variant: "destructive",
-        title: "Deep Dive Failed",
-        description: "Could not fetch detailed implications.",
-      });
-    } finally {
-      setIsExplaining(false);
     }
   };
 
@@ -100,15 +87,15 @@ export function RiskCard({ risk }: RiskCardProps) {
           variant="ghost" 
           size="sm" 
           className="w-full justify-between h-8 text-xs font-bold border border-border/50 bg-secondary/20"
-          onClick={handleDeepDive}
+          onClick={handleToggle}
           disabled={isExplaining}
         >
           {isExplaining ? (
             <span className="flex items-center gap-2"><Loader2 className="h-3 w-3 animate-spin" /> Fetching Deep Dive...</span>
           ) : (
             <>
-              {isExpanded ? "Hide Deep Dive" : "Show Deep Dive & Alternatives"}
-              {isExpanded ? <ChevronUp className="h-3 w-3" /> : <ChevronDown className="h-3 w-3" />}
+              {isExpanded && details ? "Hide Deep Dive" : "Show Deep Dive & Alternatives"}
+              {isExpanded && details ? <ChevronUp className="h-3 w-3" /> : <ChevronDown className="h-3 w-3" />}
             </>
           )}
         </Button>
