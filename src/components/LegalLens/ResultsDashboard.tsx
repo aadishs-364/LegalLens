@@ -6,7 +6,8 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { RiskCard } from "./RiskCard";
 import { RiskMeter } from "./RiskMeter";
 import { Button } from "@/components/ui/button";
-import { Copy, Download, FileText, AlertTriangle, Activity, CheckCircle2 } from "lucide-react";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { Copy, Download, FileText, AlertTriangle, Activity, CheckCircle2, Book } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
 import type { IdentifyContractRisksOutput } from "@/ai/flows/identify-contract-risks";
 
@@ -28,7 +29,6 @@ export function ResultsDashboard({ data }: ResultsDashboardProps) {
     window.print();
   };
 
-  // Split plain English by double newlines to render as distinct paragraphs
   const paragraphs = data.plainEnglish.split(/\n\n+/).filter(p => p.trim().length > 0);
 
   return (
@@ -51,18 +51,18 @@ export function ResultsDashboard({ data }: ResultsDashboardProps) {
       </div>
 
       <Tabs defaultValue="summary" className="flex-1 flex flex-col">
-        <TabsList className="grid w-full grid-cols-3 bg-secondary/50 p-1">
-          <TabsTrigger value="summary" className="gap-2">
-            <Activity className="h-4 w-4" />
+        <TabsList className="grid w-full grid-cols-4 bg-secondary/50 p-1">
+          <TabsTrigger value="summary" className="gap-2 text-xs">
             Summary
           </TabsTrigger>
-          <TabsTrigger value="plain" className="gap-2">
-            <CheckCircle2 className="h-4 w-4" />
+          <TabsTrigger value="plain" className="gap-2 text-xs">
             Plain English
           </TabsTrigger>
-          <TabsTrigger value="risks" className="gap-2">
-            <AlertTriangle className="h-4 w-4" />
+          <TabsTrigger value="risks" className="gap-2 text-xs">
             Risks ({data.risks.length})
+          </TabsTrigger>
+          <TabsTrigger value="glossary" className="gap-2 text-xs">
+            Glossary
           </TabsTrigger>
         </TabsList>
 
@@ -78,8 +78,8 @@ export function ResultsDashboard({ data }: ResultsDashboardProps) {
                       <p className="text-2xl font-bold">{data.risks.length}</p>
                    </div>
                    <div className="p-4 rounded-lg bg-background/40 border border-border/50">
-                      <p className="text-xs text-muted-foreground uppercase mb-1">Clause Status</p>
-                      <p className="text-2xl font-bold text-emerald-400">Valid</p>
+                      <p className="text-xs text-muted-foreground uppercase mb-1">Key Terms Found</p>
+                      <p className="text-2xl font-bold text-accent">{data.glossary?.length || 0}</p>
                    </div>
                 </div>
               </div>
@@ -122,6 +122,42 @@ export function ResultsDashboard({ data }: ResultsDashboardProps) {
                   <p>No major risks identified in this clause.</p>
                 </div>
               )}
+            </ScrollArea>
+          </TabsContent>
+
+          <TabsContent value="glossary" className="m-0 h-full p-6">
+            <ScrollArea className="h-full">
+              <div className="space-y-6">
+                <h3 className="text-lg font-bold flex items-center gap-2 text-primary sticky top-0 bg-card/30 backdrop-blur-md pb-2 z-10">
+                  <Book className="h-5 w-5" />
+                  Terms Breakdown
+                </h3>
+                {data.glossary && data.glossary.length > 0 ? (
+                  <div className="rounded-lg border border-border/50 bg-background/40 overflow-hidden">
+                    <Table>
+                      <TableHeader>
+                        <TableRow className="hover:bg-transparent">
+                          <TableHead className="w-[150px] font-bold text-foreground">Term</TableHead>
+                          <TableHead className="font-bold text-foreground">Meaning</TableHead>
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        {data.glossary.map((item, i) => (
+                          <TableRow key={i} className="border-border/30">
+                            <TableCell className="font-bold text-primary">{item.term}</TableCell>
+                            <TableCell className="text-muted-foreground">{item.meaning}</TableCell>
+                          </TableRow>
+                        ))}
+                      </TableBody>
+                    </Table>
+                  </div>
+                ) : (
+                  <div className="flex flex-col items-center justify-center h-40 text-center text-muted-foreground">
+                    <Book className="h-10 w-10 mb-2 opacity-20" />
+                    <p>No specific legal terms required breakdown.</p>
+                  </div>
+                )}
+              </div>
             </ScrollArea>
           </TabsContent>
         </div>

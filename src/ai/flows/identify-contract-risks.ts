@@ -1,6 +1,7 @@
 'use server';
 /**
- * @fileOverview A Genkit flow for identifying and categorizing legal risks in a contract clause.
+ * @fileOverview A Genkit flow for identifying and categorizing legal risks in a contract clause,
+ * including a glossary of complex legal terms.
  *
  * - identifyContractRisks - A function that handles the process of analyzing a contract clause for risks.
  * - IdentifyContractRisksInput - The input type for the identifyContractRisks function.
@@ -36,6 +37,12 @@ const RiskSchema = z.object({
   severity: z
     .enum(['Low', 'Medium', 'High', 'Critical'])
     .describe('The severity level of the risk.'),
+  originalFragment: z.string().describe('The specific fragment of the contract this risk refers to.'),
+});
+
+const GlossaryItemSchema = z.object({
+  term: z.string().describe('The complex legal term identified.'),
+  meaning: z.string().describe('The plain English meaning of the term.'),
 });
 
 const IdentifyContractRisksOutputSchema = z.object({
@@ -54,6 +61,7 @@ const IdentifyContractRisksOutputSchema = z.object({
     oneSentence: z.string().describe('A one-sentence overall risk summary.'),
   }),
   risks: z.array(RiskSchema).describe('An array of identified risks.'),
+  glossary: z.array(GlossaryItemSchema).describe('A breakdown of complex legal terms found in the text.'),
 });
 export type IdentifyContractRisksOutput = z.infer<typeof IdentifyContractRisksOutputSchema>;
 
@@ -72,22 +80,16 @@ const identifyContractRisksPrompt = ai.definePrompt({
 CRITICAL INSTRUCTIONS FOR 'plainEnglish':
 1. Translate the 'contractClause' into clear plain English.
 2. YOU MUST MIRROR THE EXACT STRUCTURE of the original text. 
-3. Use double newlines (\\n\\n) to separate distinct paragraphs, clauses, or numbered points. This is essential for readability in the UI.
-4. Do not return a single block of text if the input has multiple points.
+3. Use double newlines (\\n\\n) to separate distinct paragraphs, clauses, or numbered points.
+
+Instructions for Glossary:
+1. Identify specific, complex legal terms used in the text (e.g., "Indemnify", "Force Majeure", "Arbitration").
+2. Provide a simple, clear meaning for each.
+3. If a block of text contains multiple distinct obligations (e.g., "Indemnify, Defend, and Hold Harmless"), break them down as separate items in the glossary.
 
 Instructions for Risks:
 1. Identify risks and categorize them ONLY as: Financial, Legal Liability, Operational, Privacy, or Non-Compete.
-2. For each risk, provide:
-   "risks": [ 
-     { 
-       "category": "Financial | Legal Liability | Operational | Privacy | Non-Compete",
-       "riskFactor": "string", 
-       "explanation": "string", 
-       "severity": "Low|Medium|High|Critical" 
-     } 
-   ]
-
-3. If isValidClause is false, explain why in plainEnglish and return an empty risks array.
+2. For each risk, include the 'originalFragment' of text it refers to.
 
 Contract Clause: {{{contractClause}}}`,
 });

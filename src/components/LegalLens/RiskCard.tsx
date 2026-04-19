@@ -1,10 +1,13 @@
 "use client"
 
-import React from 'react';
+import React, { useState } from 'react';
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { AlertCircle, ShieldAlert, Info, Scale } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { AlertCircle, ShieldAlert, Info, Scale, ChevronDown, ChevronUp, Loader2, MessageSquare, Lightbulb, FileWarning } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { explainRiskImplications, type ExplainRiskImplicationsOutput } from "@/ai/flows/explain-risk-implications";
+import { toast } from "@/hooks/use-toast";
 
 interface RiskCardProps {
   risk: {
@@ -12,10 +15,15 @@ interface RiskCardProps {
     category: string;
     explanation: string;
     severity: 'Low' | 'Medium' | 'High' | 'Critical';
+    originalFragment?: string;
   };
 }
 
 export function RiskCard({ risk }: RiskCardProps) {
+  const [isExpanded, setIsExpanded] = useState(false);
+  const [isExplaining, setIsExplaining] = useState(false);
+  const [details, setDetails] = useState<ExplainRiskImplicationsOutput | null>(null);
+
   const getSeverityStyles = (severity: string) => {
     switch (severity) {
       case 'Critical': return "border-red-500/50 bg-red-500/10 text-red-400";
@@ -33,6 +41,34 @@ export function RiskCard({ risk }: RiskCardProps) {
       case 'Medium': return <Scale className="h-5 w-5 text-yellow-500" />;
       case 'Low': return <Info className="h-5 w-5 text-emerald-500" />;
       default: return null;
+    }
+  };
+
+  const handleDeepDive = async () => {
+    if (details) {
+      setIsExpanded(!isExpanded);
+      return;
+    }
+
+    setIsExplaining(true);
+    try {
+      const result = await explainRiskImplications({
+        riskTitle: risk.riskFactor,
+        originalFragment: risk.originalFragment || risk.explanation,
+        severity: risk.severity,
+        existingExplanation: risk.explanation
+      });
+      setDetails(result);
+      setIsExpanded(true);
+    } catch (error) {
+      console.error(error);
+      toast({
+        variant: "destructive",
+        title: "Deep Dive Failed",
+        description: "Could not fetch detailed implications.",
+      });
+    } finally {
+      setIsExplaining(false);
     }
   };
 
@@ -54,11 +90,62 @@ export function RiskCard({ risk }: RiskCardProps) {
       </CardHeader>
       <CardContent className="space-y-4">
         <div>
-          <h4 className="mb-1 text-sm font-semibold text-foreground">Analysis:</h4>
+          <h4 className="mb-1 text-xs font-bold uppercase text-foreground/70">Quick Analysis:</h4>
           <p className="text-sm leading-relaxed text-muted-foreground">
             {risk.explanation}
           </p>
         </div>
+
+        <Button 
+          variant="ghost" 
+          size="sm" 
+          className="w-full justify-between h-8 text-xs font-bold border border-border/50 bg-secondary/20"
+          onClick={handleDeepDive}
+          disabled={isExplaining}
+        >
+          {isExplaining ? (
+            <span className="flex items-center gap-2"><Loader2 className="h-3 w-3 animate-spin" /> Fetching Deep Dive...</span>
+          ) : (
+            <>
+              {isExpanded ? "Hide Deep Dive" : "Show Deep Dive & Alternatives"}
+              {isExpanded ? <ChevronUp className="h-3 w-3" /> : <ChevronDown className="h-3 w-3" />}
+            </>
+          )}
+        </Button>
+
+        {isExpanded && details && (
+          <div className="space-y-4 pt-4 border-t border-border/30 animate-in fade-in slide-in-from-top-2">
+            <div className="space-y-2">
+               <div className="flex items-center gap-2 text-primary">
+                 <FileWarning className="h-4 w-4" />
+                 <h4 className="text-xs font-bold uppercase">Why it matters</h4>
+               </div>
+               <p className="text-sm text-foreground/90 leading-relaxed bg-background/30 p-3 rounded-lg border border-border/20">
+                 {details.detailedExplanation}
+               </p>
+            </div>
+
+            <div className="space-y-2">
+               <div className="flex items-center gap-2 text-accent">
+                 <Lightbulb className="h-4 w-4" />
+                 <h4 className="text-xs font-bold uppercase">Fairer Alternative</h4>
+               </div>
+               <p className="text-sm italic text-muted-foreground bg-accent/5 p-3 rounded-lg border border-accent/20">
+                 "{details.fairerAlternative || "No specific wording suggested, consult your legal team."}"
+               </p>
+            </div>
+
+            <div className="space-y-2">
+               <div className="flex items-center gap-2 text-orange-400">
+                 <MessageSquare className="h-4 w-4" />
+                 <h4 className="text-xs font-bold uppercase">Ask your lawyer:</h4>
+               </div>
+               <p className="text-sm font-medium text-foreground p-3 rounded-lg bg-orange-500/5 border border-orange-500/20">
+                 {details.lawyerTip}
+               </p>
+            </div>
+          </div>
+        )}
       </CardContent>
     </Card>
   );
