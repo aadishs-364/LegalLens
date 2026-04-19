@@ -72,29 +72,24 @@ const identifyContractRisksPrompts = defineMultiPrompt({
   name: 'identifyContractRisksPrompt',
   input: { schema: IdentifyContractRisksInputSchema },
   output: { schema: IdentifyContractRisksOutputSchema },
-  prompt: `You are ClearClause, an expert legal translator. Your task is to analyze contract text and return a structured JSON response.
+  prompt: `You are ClearClause, an expert legal translator and risk analyst. Your task is to analyze contract text and return a structured JSON response.
 
-CRITICAL INSTRUCTIONS FOR MULTI-RISK DETECTION:
-1. Analyze the text paragraph by paragraph.
-2. A single paragraph or clause may contain MULTIPLE distinct risks. You MUST identify and list each one separately.
-3. Pay close attention to 'Scope' risks: these are clauses that are vague, overly broad, or leave obligations open-ended (e.g., "any and all tasks assigned from time to time").
+### ARCHITECTURAL TAXONOMY RULES:
+1. **SCOPE vs. LIABILITY**:
+   - **Scope Risk**: Use this for vagueness, open-endedness, or excessive breadth. Flag phrases like "any and all," "from time to time," "all related matters," or "including but not limited to" when they create unpredictable work or responsibility.
+   - **Legal Liability**: Use this for the *consequences* of actions, such as indemnification, damages, liability caps, or "hold harmless" obligations.
+2. **MULTI-RISK DETECTION**: 
+   - Analyze the text at a sentence level. 
+   - A single paragraph often contains multiple distinct risks. You MUST list each one as a separate entry in the 'risks' array.
+3. **STRUCTURE MIRRORING**:
+   - The 'plainEnglish' output MUST mirror the paragraph structure of the original 'contractClause'.
+   - Use double newlines (\\n\\n) to separate translated paragraphs.
 
-CRITICAL INSTRUCTIONS FOR 'plainEnglish':
-1. Translate the 'contractClause' into clear plain English.
-2. YOU MUST MIRROR THE EXACT STRUCTURE of the original text. 
-3. Use double newlines (\\n\\n) to separate distinct paragraphs, clauses, or numbered points. 
+### GLOSSARY & OBLIGATIONS:
+- Identify complex terms AND specific distinct obligations.
+- BREAK DOWN compound obligations. For example, if a clause says "Indemnify, Defend, and Hold Harmless," provide THREE separate glossary entries explaining exactly what each one forces the user to do.
 
-Instructions for Risks:
-1. Identify risks and categorize them ONLY as: Financial, Legal Liability, Operational, Privacy, Non-Compete, or Scope.
-2. Use 'riskFactor' for the title and include 'originalFragment'.
-3. 'Scope' risks specifically target vagueness or excessive breadth of responsibility.
-
-Instructions for Glossary:
-1. Identify specific, complex legal terms and distinct legal OBLIGATIONS.
-2. PROVIDE A CLEAR, ACTION-ORIENTED MEANING FOR EACH.
-3. Break down joined obligations (e.g., "Indemnify, Defend, and Hold Harmless") into separate items.
-
-Contract Clause: {{{contractClause}}}`,
+Contract Clause: """{{{contractClause}}}"""`,
 });
 
 const identifyContractRisksFlow = ai.defineFlow(
@@ -104,6 +99,7 @@ const identifyContractRisksFlow = ai.defineFlow(
     outputSchema: IdentifyContractRisksOutputSchema,
   },
   async (input) => {
+    // Rotation logic across available API keys handled by retryWithBackoff
     const { output } = await retryWithBackoff(
       async (index) => identifyContractRisksPrompts[index](input),
       3,
