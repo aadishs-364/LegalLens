@@ -47,16 +47,15 @@ export const allAis = keys.length > 0
 export const ai = allAis[0];
 
 /**
- * Helper to define a prompt across all AI instances with a fallback model strategy.
- * If Flash (index 0) fails or is restricted, the retry logic will rotate to 
- * Pro (index 1+) which is available globally.
+ * Helper to define a prompt across all AI instances.
+ * Using 'gemini-pro' as it is the most stable and widely accessible model
+ * for accounts that haven't yet been migrated to 1.5 models in all regions.
  */
 export function defineMultiPrompt<I extends z.ZodTypeAny, O extends z.ZodTypeAny>(options: any) {
-  return allAis.map((instance, index) =>
+  return allAis.map((instance) =>
     instance.definePrompt({
       ...options,
-      // Fallback strategy: Try flash first, use pro for all other rotated instances
-      model: index === 0 ? 'gemini-1.5-flash' : 'gemini-1.5-pro',
+      model: 'gemini-pro',
     })
   );
 }
