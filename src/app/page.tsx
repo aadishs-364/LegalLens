@@ -231,7 +231,7 @@ export default function LegalLensPage() {
                     {isAnalyzing ? (
                       <>
                         <Loader2 className="h-5 w-5 animate-spin" />
-                        Analysing...
+                        Analysing your Legalase and identifying risks...
                       </>
                     ) : (
                       <>

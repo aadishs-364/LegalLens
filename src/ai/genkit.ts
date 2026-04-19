@@ -26,6 +26,18 @@ if (typeof window === 'undefined') {
   console.log(`[Genkit Init] Cycling 6-key pool. Detected ${googleKeys.length} Google key(s) and ${openRouterKey ? '1' : '0'} OpenRouter key.`);
 }
 
+/**
+ * Robustly resolve the openai plugin function from genkitx-openai
+ */
+const getOpenAIPlugin = () => {
+  if (!genkitOpenAI) return null;
+  // Try various export patterns to handle different bundling environments
+  const plugin = (genkitOpenAI as any).openai || (genkitOpenAI as any).default?.openai || genkitOpenAI;
+  return typeof plugin === 'function' ? plugin : null;
+};
+
+const openAIPlugin = getOpenAIPlugin();
+
 // Create internal map of instances with their specific model identifiers
 export const allAisWithModels = [
   ...googleKeys.map(key => ({
@@ -34,9 +46,9 @@ export const allAisWithModels = [
     }),
     model: GOOGLE_MODEL
   })),
-  ...(openRouterKey ? [{
+  ...(openRouterKey && openAIPlugin ? [{
     instance: genkit({
-      plugins: [genkitOpenAI.openai({ 
+      plugins: [openAIPlugin({ 
         apiKey: openRouterKey, 
         config: { baseURL: 'https://openrouter.ai/api/v1' } 
       })],
