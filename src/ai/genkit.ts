@@ -24,7 +24,6 @@ if (typeof window === 'undefined') {
   if (keys.length === 0) {
     console.warn('[Genkit Init] No API keys found in environment. Please check your .env file.');
   } else {
-    // Log masked keys for verification without exposing them
     keys.forEach((k, i) => {
       console.log(`[Genkit Init] Key #${i + 1}: ${k.substring(0, 6)}...${k.substring(k.length - 4)}`);
     });
@@ -32,21 +31,19 @@ if (typeof window === 'undefined') {
 }
 
 /**
- * Initialize a pool of Genkit instances, one for each API key.
- * Using gemini-1.5-flash (stable and fast).
+ * Initialize a pool of Genkit instances. 
+ * We use 'googleai/gemini-1.5-flash' as the primary model.
  */
 export const allAis = keys.length > 0 
   ? keys.map(key => genkit({
       plugins: [googleAI({ apiKey: key })],
-      model: 'googleai/gemini-1.5-flash',
     }))
   : [genkit({
       plugins: [googleAI()],
-      model: 'googleai/gemini-1.5-flash',
     })];
 
 /**
- * Primary AI instance for general use (e.g., defining schemas).
+ * Primary AI instance for general use.
  */
 export const ai = allAis[0];
 
@@ -54,5 +51,9 @@ export const ai = allAis[0];
  * Helper to define a prompt across all available AI instances for fallback support.
  */
 export function defineMultiPrompt<I extends z.ZodTypeAny, O extends z.ZodTypeAny>(options: any) {
-  return allAis.map(instance => instance.definePrompt(options));
+  return allAis.map(instance => instance.definePrompt({
+    ...options,
+    // Explicitly using the most stable model identifier string
+    model: 'googleai/gemini-1.5-flash',
+  }));
 }

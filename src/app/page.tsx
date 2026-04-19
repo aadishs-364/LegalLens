@@ -51,7 +51,6 @@ export default function LegalLensPage() {
 
     setIsAnalyzing(true);
     try {
-      // Direct call - internal rotation handled by the server action
       const data = await identifyContractRisks({ contractClause: inputText });
       
       if (!data.isValidClause) {
@@ -169,7 +168,6 @@ export default function LegalLensPage() {
       <main className="container mx-auto p-4 md:p-8">
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 items-start">
           
-          {/* Input Panel */}
           <section className="space-y-6">
             <div className="space-y-2">
               <h2 className="text-3xl md:text-4xl font-black tracking-tight text-foreground leading-tight">
@@ -245,7 +243,6 @@ export default function LegalLensPage() {
               </div>
             </Card>
             
-            {/* History Section */}
             {history.length > 0 && (
               <div ref={historyRef} className="space-y-4 pt-4 border-t border-border/30 scroll-mt-20">
                 <h3 className="text-xs font-bold uppercase tracking-widest text-muted-foreground flex items-center gap-2">
@@ -281,7 +278,6 @@ export default function LegalLensPage() {
             )}
           </section>
 
-          {/* Results Panel */}
           <section className="min-h-[600px] flex flex-col">
             {isAnalyzing ? (
               <div className="flex-1 flex flex-col items-center justify-center space-y-6 rounded-2xl border border-dashed border-primary/20 bg-primary/5">
@@ -291,7 +287,7 @@ export default function LegalLensPage() {
                 </div>
                 <div className="text-center">
                   <h3 className="text-xl font-bold text-foreground">Extracting Legal Insights</h3>
-                  <p className="text-muted-foreground mt-2">Rotating across 5 API keys for maximum speed...</p>
+                  <p className="text-muted-foreground mt-2">Analyzing your LegalEase...</p>
                 </div>
               </div>
             ) : results ? (
