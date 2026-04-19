@@ -1,3 +1,4 @@
+
 "use client"
 
 import React, { useState, useEffect, useRef } from 'react';
@@ -29,7 +30,7 @@ export default function LegalLensPage() {
 
   // Hydration safety for localStorage
   useEffect(() => {
-    const saved = localStorage.getItem('legallens_history_v2');
+    const saved = localStorage.getItem('legallens_history_v3');
     if (saved) {
       try {
         setHistory(JSON.parse(saved));
@@ -71,9 +72,10 @@ export default function LegalLensPage() {
         };
         const updatedHistory = [newEntry, ...history.filter(h => h.fullText !== inputText).slice(0, 9)];
         setHistory(updatedHistory);
-        localStorage.setItem('legallens_history_v2', JSON.stringify(updatedHistory));
+        localStorage.setItem('legallens_history_v3', JSON.stringify(updatedHistory));
       }
     } catch (error: any) {
+      console.error("Analysis Error:", error);
       const errorMessage = String(error?.message || "").toUpperCase();
       const isRateLimit = errorMessage.includes('429') || errorMessage.includes('RESOURCE_EXHAUSTED') || errorMessage.includes('LIMIT');
       
@@ -84,11 +86,10 @@ export default function LegalLensPage() {
           description: "All API keys are currently busy. Please wait a few seconds.",
         });
       } else {
-        console.error("Analysis Error:", error);
         toast({
           variant: "destructive",
           title: "Analysis Failed",
-          description: error?.message || "An error occurred during analysis. Rotating through your API keys...",
+          description: error?.message || "An error occurred during analysis. Rotating keys...",
         });
       }
     } finally {
@@ -280,7 +281,7 @@ export default function LegalLensPage() {
 
           <section className="min-h-[600px] flex flex-col">
             {isAnalyzing ? (
-              <div className="flex-1 flex flex-col items-center justify-center space-y-6 rounded-2xl border border-dashed border-primary/20 bg-primary/5">
+              <div className="flex-1 flex flex-col items-center justify-center space-y-6 rounded-2xl border border-dashed border-primary/20 bg-primary/5 p-12">
                 <div className="relative">
                   <div className="absolute inset-0 rounded-full bg-primary/20 blur-xl animate-pulse" />
                   <Loader2 className="h-16 w-16 text-primary animate-spin relative" />

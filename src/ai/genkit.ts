@@ -1,5 +1,6 @@
+
 import { genkit, z } from 'genkit';
-import { googleAI } from '@genkit-ai/googleai';
+import { googleAI } from '@genkit-ai/google-genai';
 
 /**
  * Detect available API keys from environment variables.
@@ -48,14 +49,13 @@ export const ai = allAis[0];
 
 /**
  * Helper to define a prompt across all AI instances.
- * Using 'gemini-pro' as it is the most stable and widely accessible model
- * for accounts that haven't yet been migrated to 1.5 models in all regions.
+ * Using the explicit 'googleai/...' prefix to ensure the plugin routes correctly.
  */
 export function defineMultiPrompt<I extends z.ZodTypeAny, O extends z.ZodTypeAny>(options: any) {
   return allAis.map((instance) =>
     instance.definePrompt({
       ...options,
-      model: 'gemini-pro',
+      model: 'googleai/gemini-1.5-flash',
     })
   );
 }
