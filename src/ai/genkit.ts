@@ -16,13 +16,10 @@ const keys = Array.from(new Set([
 // Diagnostic log (server-side only)
 if (typeof window === 'undefined') {
   console.log(`[Genkit Init] Running in 3-key stable mode. Detected ${keys.length} key(s).`);
-  if (keys.length === 0) {
-    console.warn('[Genkit Init] No API keys found. Please check your .env file.');
-  }
 }
 
 /**
- * Initialize a pool of Genkit instances.
+ * Initialize a pool of Genkit instances using the stable Google AI plugin.
  */
 export const allAis = keys.length > 0
   ? keys.map(key =>
@@ -43,7 +40,7 @@ export const ai = allAis[0];
 
 /**
  * Helper to define a prompt across all AI instances.
- * Using 'googleai/gemini-1.5-flash' ensures routing to the stable v1 endpoint.
+ * Using 'googleai/gemini-1.5-flash' with the stable plugin ensures routing to the v1 endpoint.
  */
 export function defineMultiPrompt<I extends z.ZodTypeAny, O extends z.ZodTypeAny>(options: any) {
   return allAis.map((instance) =>
