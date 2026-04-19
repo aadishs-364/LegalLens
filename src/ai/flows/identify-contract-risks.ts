@@ -83,8 +83,10 @@ const identifyContractRisksPrompts = defineMultiPrompt({
    - Analyze the text at a sentence level. 
    - You MUST return a separate risk object for EACH distinct legal concern, even if they appear in the same sentence. Never bundle multiple risks into one card.
 
-3. **IRREVOCABLE TRIGGER**:
-   - Always flag the word 'irrevocably' or 'irrevocable' as a Critical severity 'Permanent Rights Waiver' risk — it means the action can never be undone, even after the contract ends.
+3. **THE 100/100 IRREVOCABLE TRIGGER**:
+   - If the text contains the word 'irrevocably' or 'irrevocable', you MUST generate a DEDICATED risk card titled "Permanent & Irreversible Rights Transfer".
+   - The primary focus of this card MUST be the word 'irrevocably' itself and its legal permanence. 
+   - DO NOT bundle this into a general 'Intellectual Property' or 'Assignment' card. It requires its own dedicated spotlight card.
 
 4. **SEVERITY THRESHOLDS**:
    - Mark severity as **Critical** if the clause permanently transfers rights, has no time limit, applies outside of working hours without compensation, or contains 'irrevocable' waivers.
