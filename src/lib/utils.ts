@@ -59,7 +59,8 @@ export async function retryWithBackoff<T>(
           : null;
 
         // Determine wait time: use Google's suggestion or fallback to exponential backoff
-        const waitMs = retryAfterMs ?? (initialDelay * Math.pow(2, retries) + Math.random() * 300);
+        // Fallback wait is shorter to prevent server action timeouts
+        const waitMs = retryAfterMs ?? (initialDelay * Math.pow(1.5, retries) + Math.random() * 200);
 
         if (typeof window === 'undefined') {
           console.warn(`[Quota] All ${availableInstancesCount} keys exhausted. Waiting ${Math.round(waitMs)}ms...`);

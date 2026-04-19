@@ -286,8 +286,8 @@ export default function LegalLensPage() {
                   <Loader2 className="h-16 w-16 text-primary animate-spin relative" />
                 </div>
                 <div className="text-center">
-                  <h3 className="text-xl font-bold text-foreground">Analysing your Legalase</h3>
-                  <p className="text-muted-foreground mt-2">Analysing your Legalase and identifying risks...</p>
+                  <h3 className="text-xl font-bold text-foreground">Analysing your Legalase and identifying risks...</h3>
+                  <p className="text-muted-foreground mt-2">Connecting to our neural legal engine...</p>
                 </div>
               </div>
             ) : results ? (
