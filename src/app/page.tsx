@@ -81,14 +81,14 @@ export default function LegalLensPage() {
         toast({
           variant: "destructive",
           title: "AI Capacity Reached",
-          description: "All 5 API keys are currently busy. Please wait 15 seconds.",
+          description: "All API keys are currently busy. Please wait a few seconds.",
         });
       } else {
         console.error("Analysis Error:", error);
         toast({
           variant: "destructive",
           title: "Analysis Failed",
-          description: "An error occurred while communicating with the AI. Please check your API keys.",
+          description: "An error occurred during analysis. Re-checking your API keys...",
         });
       }
     } finally {

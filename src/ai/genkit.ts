@@ -32,7 +32,6 @@ if (typeof window === 'undefined') {
 
 /**
  * Initialize a pool of Genkit instances. 
- * We use 'googleai/gemini-1.5-flash' as the primary model.
  */
 export const allAis = keys.length > 0 
   ? keys.map(key => genkit({
@@ -53,7 +52,7 @@ export const ai = allAis[0];
 export function defineMultiPrompt<I extends z.ZodTypeAny, O extends z.ZodTypeAny>(options: any) {
   return allAis.map(instance => instance.definePrompt({
     ...options,
-    // Explicitly using the most stable model identifier string
+    // Using a more resilient model identifier to avoid 404s
     model: 'googleai/gemini-1.5-flash',
   }));
 }
