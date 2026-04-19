@@ -7,7 +7,7 @@ export function cn(...inputs: ClassValue[]) {
 
 /**
  * Utility to retry an async function with exponential backoff and instance rotation.
- * Optimized for speed when multiple keys are available.
+ * Optimized for speed and respects Google's "retry in" instructions.
  * 
  * @param fn - A function that receives the current attempt index (for rotation) and returns a promise.
  * @param maxRetries - Maximum number of retries.
@@ -40,29 +40,29 @@ export async function retryWithBackoff<T>(
         errorMessage.includes('LIMIT');
 
       if (isRateLimit && retries < maxRetries) {
-        // FAST ROTATION: If we have other keys, switch immediately
+        // Parse "retry in X.Xs" from the error message
+        const retryAfterMatch = String(error?.message).match(/retry in ([\d.]+)s/i);
+        const retryAfterMs = retryAfterMatch
+          ? parseFloat(retryAfterMatch[1]) * 1000
+          : null;
+
+        // Determine wait time: use Google's suggestion or fallback to exponential backoff
+        const waitMs = retryAfterMs ?? (initialDelay * Math.pow(2, retries) + Math.random() * 300);
+
         if (availableInstancesCount > 1) {
           const previousIndex = currentInstanceIndex;
           currentInstanceIndex = (currentInstanceIndex + 1) % availableInstancesCount;
           
           if (typeof window === 'undefined') {
-            console.log(`[Fast-Rotate] Switching from Key #${previousIndex + 1} to Key #${currentInstanceIndex + 1} due to rate limit.`);
+            console.log(`[Rate-Limit] Key #${previousIndex + 1} exhausted. Waiting ${Math.round(waitMs)}ms and switching to Key #${currentInstanceIndex + 1}.`);
           }
-          
-          // Tiny jitter to avoid simultaneous hits
-          await new Promise(resolve => setTimeout(resolve, 150));
-          retries++;
-          continue;
+        } else {
+          if (typeof window === 'undefined') {
+            console.warn(`[Retry] Quota hit. Waiting ${Math.round(waitMs)}ms before retry ${retries + 1}.`);
+          }
         }
         
-        // SLOW BACKOFF: Only used if we have only one key
-        const delay = initialDelay * Math.pow(2, retries) + Math.random() * 300;
-        
-        if (typeof window === 'undefined') {
-          console.warn(`[Retry] Rate limit hit. Waiting ${Math.round(delay)}ms before retry ${retries + 1}.`);
-        }
-        
-        await new Promise(resolve => setTimeout(resolve, delay));
+        await new Promise(resolve => setTimeout(resolve, waitMs));
         retries++;
         continue;
       }

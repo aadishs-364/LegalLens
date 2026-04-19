@@ -1,7 +1,7 @@
 import { genkit, z } from 'genkit';
 import { googleAI } from '@genkit-ai/google-genai';
 
-const DEFAULT_MODEL = 'googleai/gemini-2.0-flash'; // ✅ Updated model
+const DEFAULT_MODEL = 'googleai/gemini-2.0-flash-lite'; // ✅ Using -lite for more generous free quota
 
 const keys = Array.from(new Set([
   process.env.GOOGLE_GENAI_API_KEY,
@@ -34,7 +34,7 @@ export function defineMultiPrompt<I extends z.ZodTypeAny, O extends z.ZodTypeAny
   return allAis.map((instance) =>
     instance.definePrompt({
       ...options,
-      model: DEFAULT_MODEL, // ✅ Uses updated model
+      model: DEFAULT_MODEL,
     })
   );
 }
