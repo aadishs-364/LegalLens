@@ -28,6 +28,9 @@ export function ResultsDashboard({ data }: ResultsDashboardProps) {
     window.print();
   };
 
+  // Split plain English by double newlines to render as distinct paragraphs
+  const paragraphs = data.plainEnglish.split(/\n\n+/).filter(p => p.trim().length > 0);
+
   return (
     <div className="flex h-full flex-col space-y-4 animate-in fade-in slide-in-from-bottom-4 duration-500">
       <div className="flex items-center justify-between">
@@ -85,13 +88,21 @@ export function ResultsDashboard({ data }: ResultsDashboardProps) {
 
           <TabsContent value="plain" className="m-0 h-full p-6">
             <ScrollArea className="h-full">
-              <div className="prose prose-invert max-w-none">
-                <h3 className="text-lg font-bold mb-4 flex items-center gap-2 text-accent">
+              <div className="space-y-6">
+                <h3 className="text-lg font-bold flex items-center gap-2 text-accent sticky top-0 bg-card/30 backdrop-blur-md pb-2 z-10">
                   <FileText className="h-5 w-5" />
                   Translated Content
                 </h3>
-                <div className="rounded-lg bg-background/40 p-6 border border-border/50 leading-relaxed text-lg text-foreground/90 whitespace-pre-wrap">
-                  {data.plainEnglish}
+                <div className="space-y-4">
+                  {paragraphs.map((para, i) => (
+                    <div 
+                      key={i} 
+                      className="rounded-lg bg-background/40 p-5 border border-border/50 leading-relaxed text-lg text-foreground/90 animate-in fade-in slide-in-from-left-2"
+                      style={{ animationDelay: `${i * 100}ms` }}
+                    >
+                      {para}
+                    </div>
+                  ))}
                 </div>
               </div>
             </ScrollArea>

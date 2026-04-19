@@ -16,6 +16,7 @@ interface HistoryItem {
   displaySnippet: string;
   verdict: string;
   timestamp: number;
+  results?: IdentifyContractRisksOutput;
 }
 
 export default function LegalLensPage() {
@@ -26,7 +27,7 @@ export default function LegalLensPage() {
 
   // Hydration safety for localStorage
   useEffect(() => {
-    const saved = localStorage.getItem('legallens_history');
+    const saved = localStorage.getItem('legallens_history_v2');
     if (saved) {
       try {
         setHistory(JSON.parse(saved));
@@ -61,13 +62,14 @@ export default function LegalLensPage() {
         setResults(data);
         const newEntry: HistoryItem = {
           fullText: inputText,
-          displaySnippet: inputText.substring(0, 50) + '...',
+          displaySnippet: inputText.substring(0, 80) + '...',
           verdict: data.summary.verdict,
-          timestamp: Date.now()
+          timestamp: Date.now(),
+          results: data
         };
         const updatedHistory = [newEntry, ...history.filter(h => h.fullText !== inputText).slice(0, 9)];
         setHistory(updatedHistory);
-        localStorage.setItem('legallens_history', JSON.stringify(updatedHistory));
+        localStorage.setItem('legallens_history_v2', JSON.stringify(updatedHistory));
       }
     } catch (error) {
       console.error(error);
@@ -93,10 +95,14 @@ export default function LegalLensPage() {
 
   const handleHistoryClick = (item: HistoryItem) => {
     setInputText(item.fullText);
-    setResults(null);
+    if (item.results) {
+      setResults(item.results);
+    } else {
+      setResults(null);
+    }
     toast({
       title: "History Restored",
-      description: "Previous contract text has been loaded.",
+      description: "Previous contract text and analysis have been loaded.",
     });
   };
 
@@ -215,7 +221,7 @@ export default function LegalLensPage() {
               <div className="space-y-4 pt-4 border-t border-border/30">
                 <h3 className="text-xs font-bold uppercase tracking-widest text-muted-foreground flex items-center gap-2">
                   <Clock className="h-4 w-4" />
-                  Recent Analyses (Click to restore full text)
+                  Recent Analyses
                 </h3>
                 <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-3 gap-3">
                   {history.map((item, i) => (
@@ -236,7 +242,7 @@ export default function LegalLensPage() {
                          </div>
                          <span className="text-[8px] text-muted-foreground">{new Date(item.timestamp).toLocaleDateString()}</span>
                       </div>
-                      <p className="text-[10px] text-muted-foreground line-clamp-2 leading-tight group-hover/item:text-foreground transition-colors">
+                      <p className="text-[10px] text-muted-foreground line-clamp-3 leading-tight group-hover/item:text-foreground transition-colors whitespace-pre-wrap">
                         {item.displaySnippet}
                       </p>
                     </Card>

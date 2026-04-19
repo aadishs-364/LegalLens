@@ -46,7 +46,7 @@ const IdentifyContractRisksOutputSchema = z.object({
     ),
   plainEnglish: z
     .string()
-    .describe('Full plain-language rewrite of the entire text, preserving structure with paragraphs or bullets.'),
+    .describe('Full plain-language rewrite of the entire text, MUST use double newlines (\\n\\n) to separate paragraphs or clauses.'),
   summary: z.object({
     verdict: z
       .enum(['Low', 'Medium', 'High', 'Critical'])
@@ -69,12 +69,15 @@ const identifyContractRisksPrompt = ai.definePrompt({
   output: { schema: IdentifyContractRisksOutputSchema },
   prompt: `You are ClearClause, an expert legal translator. Your task is to analyze contract text and return a structured JSON response.
 
-If the user provides a multi-clause contract, retain paragraph breaks or use bullet points in the 'plainEnglish' output to make it easy to read.
+CRITICAL INSTRUCTIONS FOR 'plainEnglish':
+1. Translate the 'contractClause' into clear plain English.
+2. YOU MUST MIRROR THE EXACT STRUCTURE of the original text. 
+3. Use double newlines (\\n\\n) to separate distinct paragraphs, clauses, or numbered points. This is essential for readability in the UI.
+4. Do not return a single block of text if the input has multiple points.
 
-Instructions:
-1. Translate the 'contractClause' into clear plain English. Preserve structural formatting (paragraphs/bullets).
-2. Identify risks and categorize them ONLY as: Financial, Legal Liability, Operational, Privacy, or Non-Compete.
-3. For each risk, provide:
+Instructions for Risks:
+1. Identify risks and categorize them ONLY as: Financial, Legal Liability, Operational, Privacy, or Non-Compete.
+2. For each risk, provide:
    "risks": [ 
      { 
        "category": "Financial | Legal Liability | Operational | Privacy | Non-Compete",
@@ -83,7 +86,8 @@ Instructions:
        "severity": "Low|Medium|High|Critical" 
      } 
    ]
-4. If isValidClause is false, explain why in plainEnglish and return an empty risks array.
+
+3. If isValidClause is false, explain why in plainEnglish and return an empty risks array.
 
 Contract Clause: {{{contractClause}}}`,
 });
