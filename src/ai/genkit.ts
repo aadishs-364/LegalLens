@@ -3,15 +3,19 @@ import {googleAI} from '@genkit-ai/google-genai';
 
 /**
  * Detect available API keys from environment variables.
- * Supports both GOOGLE_GENAI_API_KEY and GEMINI_API_KEY prefixes.
+ * Supports both GOOGLE_GENAI_API_KEY and GEMINI_API_KEY prefixes (1-5).
  */
 const keys = Array.from(new Set([
   process.env.GOOGLE_GENAI_API_KEY,
   process.env.GOOGLE_GENAI_API_KEY_2,
   process.env.GOOGLE_GENAI_API_KEY_3,
+  process.env.GOOGLE_GENAI_API_KEY_4,
+  process.env.GOOGLE_GENAI_API_KEY_5,
   process.env.GEMINI_API_KEY,
   process.env.GEMINI_API_KEY_2,
   process.env.GEMINI_API_KEY_3,
+  process.env.GEMINI_API_KEY_4,
+  process.env.GEMINI_API_KEY_5,
 ])).filter(Boolean) as string[];
 
 // Diagnostic log (visible in server terminal)
