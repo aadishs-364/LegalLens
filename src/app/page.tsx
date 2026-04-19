@@ -88,7 +88,7 @@ export default function LegalLensPage() {
         toast({
           variant: "destructive",
           title: "Analysis Failed",
-          description: "An error occurred during analysis. Re-checking your API keys...",
+          description: "An error occurred during analysis. Rotating through your API keys...",
         });
       }
     } finally {
@@ -230,7 +230,7 @@ export default function LegalLensPage() {
                     {isAnalyzing ? (
                       <>
                         <Loader2 className="h-5 w-5 animate-spin" />
-                        Analyzing...
+                        Analysing...
                       </>
                     ) : (
                       <>
@@ -287,7 +287,7 @@ export default function LegalLensPage() {
                 </div>
                 <div className="text-center">
                   <h3 className="text-xl font-bold text-foreground">Extracting Legal Insights</h3>
-                  <p className="text-muted-foreground mt-2">Analysing your Legalase...</p>
+                  <p className="text-muted-foreground mt-2">Analysing your Legalase and identifying risks...</p>
                 </div>
               </div>
             ) : results ? (

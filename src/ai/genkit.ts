@@ -47,14 +47,16 @@ export const allAis = keys.length > 0
 export const ai = allAis[0];
 
 /**
- * Helper to define a prompt across all AI instances (with fallback support)
- * Uses stable gemini-1.5-flash model identifier.
+ * Helper to define a prompt across all AI instances with a fallback model strategy.
+ * If Flash (index 0) fails or is restricted, the retry logic will rotate to 
+ * Pro (index 1+) which is available globally.
  */
 export function defineMultiPrompt<I extends z.ZodTypeAny, O extends z.ZodTypeAny>(options: any) {
-  return allAis.map(instance =>
+  return allAis.map((instance, index) =>
     instance.definePrompt({
       ...options,
-      model: 'gemini-1.5-flash',
+      // Fallback strategy: Try flash first, use pro for all other rotated instances
+      model: index === 0 ? 'gemini-1.5-flash' : 'gemini-1.5-pro',
     })
   );
 }
