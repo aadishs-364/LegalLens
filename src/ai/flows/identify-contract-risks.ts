@@ -1,11 +1,6 @@
 'use server';
 /**
- * @fileOverview A Genkit flow for identifying and categorizing legal risks in a contract clause,
- * including a glossary of complex legal terms and specific legal obligations.
- *
- * - identifyContractRisks - A function that handles the process of analyzing a contract clause for risks.
- * - IdentifyContractRisksInput - The input type for the identifyContractRisks function.
- * - IdentifyContractRisksOutput - The return type for the identifyContractRisks function.
+ * @fileOverview A Genkit flow for identifying and categorizing legal risks in a contract clause.
  */
 
 import { ai, allAis, defineMultiPrompt } from '@/ai/genkit';
@@ -84,19 +79,14 @@ CRITICAL INSTRUCTIONS FOR 'plainEnglish':
 3. Use double newlines (\\n\\n) to separate distinct paragraphs, clauses, or numbered points. 
 4. DO NOT group multiple distinct legal clauses into a single giant paragraph.
 
-Instructions for Glossary (CORE DIFFERENTIATOR):
-1. Identify specific, complex legal terms and distinct legal OBLIGATIONS (e.g., "Indemnify", "Force Majeure", "Arbitration").
-2. PROVIDE A CLEAR, ACTION-ORIENTED MEANING FOR EACH. Focus on the real-world consequence for the user.
-3. CRITICAL STRESS TEST: If a block of text contains multiple distinct obligations joined together (e.g., "Indemnify, Defend, and Hold Harmless"), you MUST break them down as separate items in the glossary.
-   - "Indemnify" -> Pay for damages or losses.
-   - "Defend" -> Cover legal costs and provide/pay for a lawyer.
-   - "Hold harmless" -> Protect from being held legally responsible or sued.
-4. Don't just define the word; explain the burden it places on the signer.
+Instructions for Glossary:
+1. Identify specific, complex legal terms and distinct legal OBLIGATIONS (e.g., "Indemnify", "Force Majeure").
+2. PROVIDE A CLEAR, ACTION-ORIENTED MEANING FOR EACH.
+3. If a block of text contains multiple distinct obligations joined together (e.g., "Indemnify, Defend, and Hold Harmless"), you MUST break them down as separate items in the glossary.
 
 Instructions for Risks:
 1. Identify risks and categorize them ONLY as: Financial, Legal Liability, Operational, Privacy, or Non-Compete.
-2. Use the field name 'riskFactor' for the title.
-3. For each risk, include the 'originalFragment' of text it refers to.
+2. Use 'riskFactor' for the title and include 'originalFragment'.
 
 Contract Clause: {{{contractClause}}}`,
 });
@@ -108,16 +98,16 @@ const identifyContractRisksFlow = ai.defineFlow(
     outputSchema: IdentifyContractRisksOutputSchema,
   },
   async (input) => {
-    // Aggressive retry logic with rotation
+    // Reduced retries and delay to ensure we stay under the 30s Server Action timeout
     const { output } = await retryWithBackoff(
       async (index) => identifyContractRisksPrompts[index](input),
-      5,
-      3000,
+      3,
+      2000,
       allAis.length
     );
     
     if (!output) {
-      throw new Error('Failed to get a valid response from the LLM.');
+      throw new Error('No response from AI.');
     }
     return output;
   }
