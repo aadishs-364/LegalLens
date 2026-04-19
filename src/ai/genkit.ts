@@ -1,4 +1,3 @@
-
 import { genkit, z } from 'genkit';
 import { googleAI } from '@genkit-ai/google-genai';
 
@@ -49,7 +48,7 @@ export const ai = allAis[0];
 
 /**
  * Helper to define a prompt across all AI instances.
- * Using the explicit 'googleai/...' prefix to ensure the plugin routes correctly.
+ * Using the explicit 'googleai/gemini-1.5-flash' identifier ensures stable routing.
  */
 export function defineMultiPrompt<I extends z.ZodTypeAny, O extends z.ZodTypeAny>(options: any) {
   return allAis.map((instance) =>

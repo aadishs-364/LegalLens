@@ -1,4 +1,3 @@
-
 "use client"
 
 import React, { useState, useEffect, useRef } from 'react';
@@ -83,13 +82,13 @@ export default function LegalLensPage() {
         toast({
           variant: "destructive",
           title: "AI Capacity Reached",
-          description: "All API keys are currently busy. Please wait a few seconds.",
+          description: "All API keys are currently busy. Rotating instances automatically...",
         });
       } else {
         toast({
           variant: "destructive",
           title: "Analysis Failed",
-          description: error?.message || "An error occurred during analysis. Rotating keys...",
+          description: error?.message || "An error occurred during analysis.",
         });
       }
     } finally {
