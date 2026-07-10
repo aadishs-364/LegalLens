@@ -1,48 +1,41 @@
 import { genkit, z, Genkit } from 'genkit';
-import { googleAI } from '@genkit-ai/google-genai';
+import { anthropic } from '@genkit-ai/anthropic';
 
-// Google model - stable for analysis
-const GOOGLE_MODEL_NAME = 'googleai/gemini-2.0-flash';
+const ANTHROPIC_MODEL = anthropic.model('claude-sonnet-4-6');
 
-let instancesCache: { instance: Genkit; model: string }[] | null = null;
+let instanceCache: { instance: Genkit; model: any } | null = null;
 
 /**
- * Robustly initialize exactly 2 Gemini AI instances for cycling.
- * This ensures quota limits are shared across two keys.
+ * Initialize a single Anthropic AI instance.
  */
-export function getAiInstances(): { instance: Genkit; model: string }[] {
-  if (instancesCache) return instancesCache;
+export function getAiInstances(): { instance: Genkit; model: any }[] {
+  if (instanceCache) return [instanceCache];
 
-  const instances: { instance: Genkit; model: string }[] = [];
+  const anthropicKey = process.env.ANTHROPIC_API_KEY;
 
-  // Define exactly 2 Gemini keys as requested for fresh credits
-  const googleKeys = [
-    process.env.GEMINI_API_KEY,
-    process.env.GEMINI_API_KEY_2,
-  ].filter(Boolean) as string[];
-
-  console.log(`[Genkit] Initializing with ${googleKeys.length} Gemini API keys...`);
-
-  for (const key of googleKeys) {
-    try {
-      const ai = genkit({ 
-        plugins: [googleAI({ apiKey: key })] 
-      });
-      instances.push({ instance: ai, model: GOOGLE_MODEL_NAME });
-    } catch (e) {
-      console.error('[Genkit] Failed to initialize Google AI instance:', e);
-    }
+  if (!anthropicKey) {
+    console.warn('[Genkit] No ANTHROPIC_API_KEY found in environment. Using default instance.');
+    instanceCache = {
+      instance: genkit({ plugins: [anthropic()], model: ANTHROPIC_MODEL }),
+      model: ANTHROPIC_MODEL,
+    };
+    return [instanceCache];
   }
 
-  // Last resort fallback if no keys are found in environment
-  if (instances.length === 0) {
-    console.warn('[Genkit] No GEMINI_API_KEY found in environment. Using default instance.');
-    const defaultInstance = genkit({ plugins: [googleAI()] });
-    instances.push({ instance: defaultInstance, model: GOOGLE_MODEL_NAME });
+  try {
+    instanceCache = {
+      instance: genkit({ plugins: [anthropic({ apiKey: anthropicKey })], model: ANTHROPIC_MODEL }),
+      model: ANTHROPIC_MODEL,
+    };
+  } catch (error) {
+    console.error('[Genkit] Failed to initialize Anthropic AI instance:', error);
+    instanceCache = {
+      instance: genkit({ plugins: [anthropic()], model: ANTHROPIC_MODEL }),
+      model: ANTHROPIC_MODEL,
+    };
   }
 
-  instancesCache = instances;
-  return instances;
+  return [instanceCache];
 }
 
 export function getAi() {
